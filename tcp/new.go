@@ -1,7 +1,7 @@
 package tcp
 
 import (
-	"frozra/cache"
+	"../cache"
 	"net"
 )
 
@@ -10,7 +10,7 @@ type Server struct {
 }
 
 func (s *Server) Listen() {
-	l, e := net.Listen("tcp", ":9207")
+	l, e := net.Listen("tcp", ":9208")
 	if e != nil {
 		panic(e)
 	}

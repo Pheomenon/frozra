@@ -7,6 +7,9 @@ func New(typ string) Cache {
 	if typ == "inmemory" {
 		c = newInMemoryCache()
 	}
+	if typ == "rocksdb" {
+		c = newRocksdbCache()
+	}
 	if c == nil {
 		panic("Unknown cache type " + typ)
 	}

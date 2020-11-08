@@ -107,7 +107,7 @@ func (c *tcpClient) PipelinedRun(cmds []*Cmd) {
 }
 
 func newTCPClient(server string) *tcpClient {
-	c, e := net.Dial("tcp", server+":9207")
+	c, e := net.Dial("tcp", server+":9208")
 	if e != nil {
 		panic(e)
 	}
