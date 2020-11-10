@@ -18,6 +18,12 @@ type rocksdbCache struct {
 	ro *C.rocksdb_readoptions_t  // read option of RocksDB
 	wo *C.rocksdb_writeoptions_t // write option of RocksDB
 	e  *C.char                   // a char* type of C used to point error string returned by RocksDB's C API
+	ch chan *pair
+}
+
+type pair struct {
+	k string
+	v []byte
 }
 
 func newRocksdbCache() *rocksdbCache {
@@ -31,7 +37,10 @@ func newRocksdbCache() *rocksdbCache {
 		panic(C.GoString(e))
 	}
 	C.rocksdb_options_destroy(options)
-	return &rocksdbCache{db, C.rocksdb_readoptions_create(), C.rocksdb_writeoptions_create(), e}
+	c := make(chan *pair, 5000)
+	wo := C.rocksdb_writeoptions_create()
+	go write_func(db, c, wo)
+	return &rocksdbCache{db, C.rocksdb_readoptions_create(), wo, e, c}
 }
 
 func (c *rocksdbCache) Get(key string) ([]byte, error) {
@@ -47,14 +56,7 @@ func (c *rocksdbCache) Get(key string) ([]byte, error) {
 }
 
 func (c *rocksdbCache) Set(key string, value []byte) error {
-	k := C.CString(key)
-	defer C.free(unsafe.Pointer(k))
-	v := C.CBytes(value)
-	defer C.free(v)
-	C.rocksdb_put(c.db, c.wo, k, C.size_t(len(key)), (*C.char)(v), C.size_t(len(value)), &c.e)
-	if c.e != nil {
-		return errors.New(C.GoString(c.e))
-	}
+	c.ch <- &pair{key, value}
 	return nil
 }
 
