@@ -1,16 +1,18 @@
 package tcp
 
 import (
-	"../cache"
 	"net"
+	"xonlab.com/frozra/v1/cache"
+	"xonlab.com/frozra/v1/cluster"
 )
 
 type Server struct {
 	cache.Cache
+	cluster.Node
 }
 
 func (s *Server) Listen() {
-	l, e := net.Listen("tcp", ":9208")
+	l, e := net.Listen("tcp", s.Addr()+":9208")
 	if e != nil {
 		panic(e)
 	}
@@ -23,6 +25,6 @@ func (s *Server) Listen() {
 	}
 }
 
-func New(c cache.Cache) *Server {
-	return &Server{c}
+func New(c cache.Cache, n cluster.Node) *Server {
+	return &Server{c, n}
 }
