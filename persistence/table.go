@@ -100,3 +100,19 @@ func (t *table) SeekBegin() {
 func (t *table) ID() uint32 {
 	return t.index
 }
+
+func (t *table) iter() *iterator {
+	return newIterator(t.fp, t.fileInfo.metaOffset)
+}
+
+func (t *table) close() {
+	t.fp.Close()
+}
+
+func (t *table) entries() []uint32 {
+	entries := make([]uint32, 0)
+	for key := range t.offsetMap {
+		entries = append(entries, key)
+	}
+	return entries
+}

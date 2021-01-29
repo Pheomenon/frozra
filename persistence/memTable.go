@@ -26,7 +26,7 @@ type hashMap struct {
 	sync.RWMutex
 }
 
-func NewHashMap(size int) *hashMap {
+func newHashMap(size int) *hashMap {
 	return &hashMap{
 		buf:           make([]byte, size),
 		concurrentMap: make(map[uint32]uint32, 0),
@@ -146,7 +146,7 @@ func (h *hashMap) persistence(path string, index uint32) {
 	fp.Write(h.buf[0:h.currentOffset])
 	slots := h.Len()
 
-	// use bloom filter to record every map
+	// use bloom filter to record every key-value pair
 	filter := bbloom.New(float64(slots), 0.01)
 	for kv := range h.concurrentMap {
 		buf := make([]byte, 4)

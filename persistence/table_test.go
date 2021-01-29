@@ -8,7 +8,7 @@ import (
 )
 
 func TestTableGet(t *testing.T) {
-	hashMap := NewHashMap(64 << 20)
+	hashMap := newHashMap(64 << 20)
 	for i := 0; i < 65535; i++ {
 		key := []byte(fmt.Sprintf("Phenom%d", i))
 		value := []byte(fmt.Sprintf("Xonlab%d", i))

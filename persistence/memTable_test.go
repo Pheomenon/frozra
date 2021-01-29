@@ -9,7 +9,7 @@ import (
 )
 
 func TestGetSet(t *testing.T) {
-	hashMap := NewHashMap(1024)
+	hashMap := newHashMap(1024)
 	key := []byte("Phenom")
 	value := []byte("Xonlab")
 	hashMap.Set(key, value)
@@ -24,7 +24,7 @@ func TestGetSet(t *testing.T) {
 
 func TestGetSet65535(t *testing.T) {
 	// default map buf size is 64M bit
-	hashMap := NewHashMap(64 << 20)
+	hashMap := newHashMap(64 << 20)
 	for i := 0; i < 65535; i++ {
 		key := []byte("Phenom" + string(rune(i)))
 		value := []byte("Xonlab" + string(rune(i)))
@@ -40,7 +40,7 @@ func TestGetSet65535(t *testing.T) {
 }
 
 func TestSaveFile(t *testing.T) {
-	hashMap := NewHashMap(64 << 20)
+	hashMap := newHashMap(64 << 20)
 	for i := 0; i < 65535; i++ {
 		key := []byte("Phenom" + string(rune(i)))
 		value := []byte("Xonlab" + string(rune(i)))

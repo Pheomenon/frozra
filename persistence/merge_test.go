@@ -8,7 +8,7 @@ import (
 )
 
 func testTable(key, value string, begin, end int, idx uint32) *table {
-	mem := NewHashMap(64 << 20)
+	mem := newHashMap(64 << 20)
 	for ; begin < end; begin++ {
 		key := []byte(fmt.Sprintf("%s%d", key, begin))
 		value := []byte(fmt.Sprintf("%s%d", value, begin))
@@ -38,7 +38,7 @@ func removeTestTable(idx uint32) {
 func TestBuilder(t *testing.T) {
 	t1 := testTable("hello", "xonlab", 1, 100, 1)
 	t2 := testTable("hello", "phenom", 101, 200, 2)
-	builder := NewTableMerger(int(t1.size + t2.size))
+	builder := newTableMerger(int(t1.size + t2.size))
 	t1.SeekBegin()
 	t2.SeekBegin()
 	builder.append(t1.fp, int64(t1.fileInfo.metaOffset))

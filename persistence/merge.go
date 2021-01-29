@@ -19,7 +19,7 @@ type tableMerger struct {
 	max       uint32
 }
 
-func NewTableMerger(size int) *tableMerger {
+func newTableMerger(size int) *tableMerger {
 	buf := new(bytes.Buffer)
 	buf.Grow(size)
 	return &tableMerger{
