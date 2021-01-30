@@ -49,13 +49,13 @@ func New(setting Setting) (*lsm, error) {
 	l0Maintainer := newLevelMaintainer()
 	for _, l0File := range metadata.L0Files {
 		t := newTable(absPath, l0File.Index)
-		l0Maintainer.andTable(t, l0File.Index)
+		l0Maintainer.addTable(t, l0File.Index)
 	}
 
 	l1Maintainer := newLevelMaintainer()
 	for _, l1File := range metadata.L1Files {
 		t := newTable(absPath, l1File.Index)
-		l1Maintainer.andTable(t, l1File.Index)
+		l1Maintainer.addTable(t, l1File.Index)
 	}
 
 	lsm := &lsm{
@@ -107,7 +107,8 @@ loop:
 }
 
 func (l *lsm) write(req *request) {
-	if !l.memoryTable.isEnoughSpace(len(req.key) + len(req.value)) {
+	// len(req.key) + len(req.value) + 8 is the total occupied of an entry in lsm's buf
+	if !l.memoryTable.isEnoughSpace(len(req.key) + len(req.value) + 8) {
 		l.Lock()
 		l.swap = l.memoryTable
 		l.memoryTable = newHashMap(l.setting.memTableSize)
@@ -173,10 +174,10 @@ func (l *lsm) flushMemory(swap *hashMap) {
 	swap.persistence(l.absPath, nextID)
 	l.metadata.addL0File(swap.records, swap.minRange, swap.maxRange, swap.occupiedSpace(), nextID)
 	table := newTable(l.absPath, nextID)
-	l.l0Maintainer.andTable(table, nextID)
-	l.Lock()
-	l.memoryTable = nil
-	l.Unlock()
+	l.l0Maintainer.addTable(table, nextID)
+	//l.Lock()
+	//l.memoryTable = nil
+	//l.Unlock()
 }
 
 func (l *lsm) merge(t1, t2 *table) {
@@ -208,7 +209,7 @@ func (l *lsm) saveL1Table(buf []byte) {
 	//l1 table has been created so have to remove those files from l0
 	// and add it to l1
 	newTable := newTable(l.absPath, fileID)
-	l.l1Maintainer.andTable(newTable, fileID)
+	l.l1Maintainer.addTable(newTable, fileID)
 
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), fileID)
 	logrus.Infof("comapction: new l1 file has beed added %d", fileID)
