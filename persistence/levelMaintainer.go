@@ -18,7 +18,7 @@ func newLevelMaintainer() *levelMaintainer {
 	}
 }
 
-func (l *levelMaintainer) andTable(t *table, index uint32) {
+func (l *levelMaintainer) addTable(t *table, index uint32) {
 	l.Lock()
 	defer l.Unlock()
 	l.tables = append(l.tables, t)
