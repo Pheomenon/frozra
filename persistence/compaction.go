@@ -7,7 +7,7 @@ import (
 )
 
 func (l *lsm) notUnion(l0f tableMetadata) {
-	newTable := newTable(l.absPath, l0f.Index)
+	newTable := readTable(l.absPath, l0f.Index)
 	l.l1Maintainer.addTable(newTable, l0f.Index)
 	l.l0Maintainer.delTable(l0f.Index)
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), l0f.Index)
@@ -16,9 +16,9 @@ func (l *lsm) notUnion(l0f tableMetadata) {
 }
 
 func (l *lsm) union(cs compactionStrategy, l0f tableMetadata) {
-	t1, t2 := newTable(l.absPath, l0f.Index), newTable(l.absPath, cs.tableIDs[0])
+	t1, t2 := readTable(l.absPath, l0f.Index), readTable(l.absPath, cs.tableIDs[0])
 	l.merge(t1, t2)
-	logrus.Infof("compaction: UNION SET found so merged l0 %d with l1 %d, pushed to l1", t1.ID(), t2.ID())
+	logrus.Infof("compaction: UNION SET found, merge l0 %d.fza minimum checksum: %d maximum checksum: %d with l1 %d.fza minimum checksum: %d maximum checksum: %d then pushed to l1", t1.ID(), t1.fileInfo.minRange, t1.fileInfo.maxRange, t2.ID(), t2.fileInfo.minRange, t2.fileInfo.maxRange)
 	t1.close()
 	l.l0Maintainer.delTable(t1.ID())
 	l.metadata.deleteL0Table(t1.ID())
@@ -31,21 +31,22 @@ func (l *lsm) union(cs compactionStrategy, l0f tableMetadata) {
 	logrus.Infof("compaction: l1 file has been deleted %d", t2.ID())
 }
 
+//TODO: need to optimize!
 func (l *lsm) overlapping(cs compactionStrategy, l0f tableMetadata) {
 	logrus.Infof("compaction: OVERLAPPING found")
 	mergers := []*tableMerger{}
 	// if the the value is not in the range, we'll create a new file and append everything in it
 	var extraBuilder *tableMerger
-	// some crazy for loop has been written so try to refactor
 	for _, idx := range cs.tableIDs {
-		t := newTable(l.absPath, idx)
+		t := readTable(l.absPath, idx)
 		t.SeekBegin()
 		builder := newTableMerger(int(t.size))
+		// mergers will load all l1 file to memory ......
 		builder.append(t.fp, int64(t.fileInfo.metaOffset))
 		builder.merge(t.offsetMap, 0)
 		mergers = append(mergers, builder)
 	}
-	toCompacT := newTable(l.absPath, l0f.Index)
+	toCompacT := readTable(l.absPath, l0f.Index)
 	iter := toCompacT.iter()
 	for iter.hasNext() {
 		kl, vl, key, val := iter.next()

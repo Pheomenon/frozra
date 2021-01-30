@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"sync"
 	"testing"
 )
@@ -28,7 +30,22 @@ func TestLSM(t *testing.T) {
 	l.Close()
 }
 
+func clean() {
+	os.Remove("./1.fza")
+	os.Remove("./2.fza")
+	os.Remove("./3.fza")
+	os.Remove("./5.fza")
+	os.Remove("./6.fza")
+	os.Remove("./7.fza")
+	os.Remove("./metadata")
+}
+
+func TestClean(t *testing.T) {
+	clean()
+}
+
 func TestConcurrent(t *testing.T) {
+	clean()
 	setting := DefaultSetting()
 	l, err := New(setting)
 	if err != nil {
@@ -79,14 +96,12 @@ func TestConcurrent(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			key := []byte("phenom" + string(rune(i)))
 			value := []byte("froza" + string(rune(i)))
-			inv, exist := l.Get(key)
+			v, exist := l.Get(key)
 			if !exist {
-				break
-				//t.Fatalf("value not found for %s", string(key))
+				t.Fatalf("value not found for %s", string(key))
 			}
-			if bytes.Compare(value, inv) != 0 {
-				break
-				//t.Fatalf("expected value %s but got %s", string(value), string(inv))
+			if bytes.Compare(value, v) != 0 {
+				t.Fatalf("expected value %s but got %s", string(value), string(v))
 			}
 		}
 		wg.Done()
@@ -95,12 +110,12 @@ func TestConcurrent(t *testing.T) {
 		for i := 101; i < 200; i++ {
 			key := []byte("phenom" + string(rune(i)))
 			value := []byte("froza" + string(rune(i)))
-			val, exist := l.Get(key)
+			v, exist := l.Get(key)
 			if !exist {
-				break
+				t.Fatalf("value not found for %s", string(key))
 			}
-			if bytes.Compare(value, val) != 0 {
-				break
+			if bytes.Compare(value, v) != 0 {
+				t.Fatalf("expected value %s but got %s", string(value), string(v))
 			}
 		}
 		wg.Done()
@@ -109,12 +124,12 @@ func TestConcurrent(t *testing.T) {
 		for i := 101; i < 200; i++ {
 			key := []byte("phenom" + string(rune(i)))
 			value := []byte("froza" + string(rune(i)))
-			inv, exist := l.Get(key)
+			v, exist := l.Get(key)
 			if !exist {
-				break
+				t.Fatalf("value not found for %s", string(key))
 			}
-			if bytes.Compare(value, inv) != 0 {
-				break
+			if bytes.Compare(value, v) != 0 {
+				t.Fatalf("expected value %s but got %s", string(value), string(v))
 			}
 		}
 		wg.Done()
@@ -178,11 +193,8 @@ func TestCompaction(t *testing.T) {
 }
 
 func TestDuplicateKey(t *testing.T) {
-	setting := DefaultSetting()
-	l, err := New(setting)
-	if err != nil {
-		t.Fatalf("lsm is expected to open but got error %s", err.Error())
-	}
+	clean()
+	l := initLSM(t)
 	var key, value []byte
 	key = []byte("phenom")
 	value = []byte("froza")
@@ -193,5 +205,67 @@ func TestDuplicateKey(t *testing.T) {
 	val, _ := l.Get([]byte("phenom"))
 	if !bytes.Equal(val, value) {
 		t.Fatalf("lsm get a unexpected value %s", value)
+	}
+}
+
+func initLSM(t *testing.T) *lsm {
+	setting := DefaultSetting()
+	l, err := New(setting)
+	if err != nil {
+		t.Fatalf("lsm is expected to open but got error %s", err.Error())
+	}
+	return l
+}
+
+func TestDuplicateKeyInL0(t *testing.T) {
+	l := initLSM(t)
+	key := []byte("froza")
+	for i := 0; i < 3; i++ {
+		l.Set(key, []byte(fmt.Sprintf("%b", i)))
+	}
+	l.memoryTable.persistence("./", 1)
+	val, _ := l.Get([]byte("froza"))
+	if !bytes.Equal(val, []byte(fmt.Sprintf("%b", 2))) {
+		t.Fatalf("lsm get a unexpected value %s", val)
+	}
+}
+
+func TestCompactL0(t *testing.T) {
+	clean()
+	l := initLSM(t)
+	for i := 0; i < 100; i++ {
+		l.Set([]byte(fmt.Sprintf("phenom%d", i)), []byte(fmt.Sprintf("froza%d", i)))
+	}
+	l.Close()
+	l = initLSM(t)
+	for i := 100; i < 200; i++ {
+		l.Set([]byte(fmt.Sprintf("phenom%d", i)), []byte(fmt.Sprintf("froza%d", i)))
+	}
+	l.Close()
+	l = initLSM(t)
+	//l.compactL0()
+	val, _ := l.Get([]byte("phenom66"))
+	if !bytes.Equal(val, []byte("froza66")) {
+		t.Fatalf("lsm get a unexpected value %s", val)
+	}
+}
+
+/*
+go test -bench=. -benchtime=60s -run=none
+
+go test -bench=. -benchtime=60s -cpuprofile=cpu.out -memprofile=mem.out -blockprofile=block.out -benchmem -run=none
+
+go tool pprof -text cpu.out
+
+go tool pprof -pdf cpu.out > cpu.pdf
+go tool pprof -svg cpu.out > cpu.svg
+*/
+func BenchmarkLsm_Set(b *testing.B) {
+	clean()
+	setting := DefaultSetting()
+	l, _ := New(setting)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		l.Set([]byte(fmt.Sprintf("key %d", i)), []byte(fmt.Sprintf("%d", b.N)))
 	}
 }

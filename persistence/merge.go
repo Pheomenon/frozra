@@ -125,8 +125,8 @@ func (t *tableMerger) appendFileInfo(fi *fileInfo) {
 
 // finish adds bloom filter to file info
 func (t *tableMerger) finish() []byte {
-	el := len(t.offsetMap)
-	filter := bbloom.New(float64(el), 0.01)
+	slots := len(t.offsetMap)
+	filter := bbloom.New(float64(slots), 0.01)
 	buf := make([]byte, 4)
 	for key := range t.offsetMap {
 		binary.BigEndian.PutUint32(buf, key)
@@ -139,7 +139,7 @@ func (t *tableMerger) finish() []byte {
 		metaOffset: mo,
 		minRange:   t.min,
 		maxRange:   t.max,
-		entries:    el,
+		entries:    slots,
 		filterSize: fl,
 	}
 	//gob means go binary it use to exchange data flow with encoder and decoder

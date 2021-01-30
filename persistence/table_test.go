@@ -15,7 +15,7 @@ func TestTableGet(t *testing.T) {
 		hashMap.Set(key, value)
 	}
 	hashMap.persistence("./", 1)
-	table := newTable("./", 1)
+	table := readTable("./", 1)
 	v, exist := table.Get([]byte(fmt.Sprintf("Phenom%d", 65534)))
 	if !exist {
 		t.Fatal("key not found in the hashmap")

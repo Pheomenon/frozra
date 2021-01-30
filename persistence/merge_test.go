@@ -15,7 +15,7 @@ func testTable(key, value string, begin, end int, idx uint32) *table {
 		mem.Set(key, value)
 	}
 	mem.persistence("./", idx)
-	return newTable("./", idx)
+	return readTable("./", idx)
 }
 
 func testValueExist(key, value string, tb *table, begin, end int, t *testing.T) {
@@ -48,7 +48,7 @@ func TestBuilder(t *testing.T) {
 	buf := builder.finish()
 	fp, _ := os.Create("3.fza")
 	fp.Write(buf)
-	t3 := newTable("./", 3)
+	t3 := readTable("./", 3)
 	testValueExist("hello", "xonlab", t3, 1, 100, t)
 	testValueExist("hello", "phenom", t3, 101, 200, t)
 	removeTestTable(1)

@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"fmt"
 	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
@@ -48,13 +47,13 @@ func New(setting Setting) (*lsm, error) {
 
 	l0Maintainer := newLevelMaintainer()
 	for _, l0File := range metadata.L0Files {
-		t := newTable(absPath, l0File.Index)
+		t := readTable(absPath, l0File.Index)
 		l0Maintainer.addTable(t, l0File.Index)
 	}
 
 	l1Maintainer := newLevelMaintainer()
 	for _, l1File := range metadata.L1Files {
-		t := newTable(absPath, l1File.Index)
+		t := readTable(absPath, l1File.Index)
 		l1Maintainer.addTable(t, l1File.Index)
 	}
 
@@ -148,6 +147,9 @@ func (l *lsm) Get(key []byte) ([]byte, bool) {
 		}
 	}
 
+	//TODO:
+	//l0 就不再弄索引树了，直接用bloom过滤器，
+	//l1 的table size是有序的，后期应该换掉bst，用一个可以直接查到最接近但比目标key小的数据结构
 	val, exist = l.l0Maintainer.get(key)
 	if exist {
 		return val, exist
@@ -173,7 +175,7 @@ func (l *lsm) flushMemory(swap *hashMap) {
 	nextID := l.metadata.nextFileID()
 	swap.persistence(l.absPath, nextID)
 	l.metadata.addL0File(swap.records, swap.minRange, swap.maxRange, swap.occupiedSpace(), nextID)
-	table := newTable(l.absPath, nextID)
+	table := readTable(l.absPath, nextID)
 	l.l0Maintainer.addTable(table, nextID)
 	//l.Lock()
 	//l.memoryTable = nil
@@ -206,19 +208,20 @@ func (l *lsm) saveL1Table(buf []byte) {
 	if n != len(buf) {
 		logrus.Fatalf("compaction: unable to write a new file at level 1 table expected %d but got %d", len(buf), n)
 	}
-	//l1 table has been created so have to remove those files from l0
+	// l1 table has been created so have to remove those files from l0
 	// and add it to l1
-	newTable := newTable(l.absPath, fileID)
+	newTable := readTable(l.absPath, fileID)
 	l.l1Maintainer.addTable(newTable, fileID)
 
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), fileID)
 	logrus.Infof("comapction: new l1 file has beed added %d", fileID)
 }
 
-func (l *lsm) L0Compaction() {
+//compactL0 compress the two densest tables into one then push that to level 1
+func (l *lsm) compactL0() {
 	l.metadata.sortL0()
 	l.metadata.mutex.Lock()
-	t1, t2 := newTable(l.absPath, l.metadata.L0Files[0].Index), newTable(l.absPath, l.metadata.L0Files[1].Index)
+	t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
 	l.metadata.mutex.Unlock()
 	l.merge(t1, t2)
 	l.l0Maintainer.delTable(t1.ID())
@@ -243,25 +246,26 @@ loop:
 			// check for l0Tables
 			l0Len := l.metadata.l0Len()
 			if l0Len >= l.setting.L0FileCapacity {
+				// if there is no file on the level 1, just push two level 0 tables to level1
 				if l.metadata.l1Len() == 0 {
-					l.L0Compaction()
+					l.compactL0()
 				}
 				// level 1 files already exist so find union set to push
 				// if overlapping range then append accordingly otherwise just push down
 				l0fs := l.metadata.copyL0()
-				fmt.Printf("%+v \n", l.metadata)
+				logrus.Infof("%+v", l.metadata)
 				for _, l0f := range l0fs {
-					p := l.metadata.l1Status(l0f)
-					if p.strategy == NOTUNION {
+					compactStrategy := l.metadata.l1Status(l0f)
+					if compactStrategy.strategy == NOTUNION {
 						l.notUnion(l0f)
 						continue
 					}
-					if p.strategy == UNION {
-						l.union(p, l0f)
+					if compactStrategy.strategy == UNION {
+						l.union(compactStrategy, l0f)
 						continue
 					}
-					if p.strategy == OVERLAPPING {
-						l.overlapping(p, l0f)
+					if compactStrategy.strategy == OVERLAPPING {
+						l.overlapping(compactStrategy, l0f)
 					}
 				}
 			}
@@ -280,7 +284,7 @@ loop:
 			for _, l1f := range l.metadata.copyL1() {
 				if l1f.Size > uint32(l.setting.maxL1Size) {
 					logrus.Infof("load balancing: l1 file %d found which it larger than max l1 size", l1f.Index)
-					l1t := newTable(l.absPath, l1f.Index)
+					l1t := readTable(l.absPath, l1f.Index)
 					ents := l1t.entries()
 					k := len(ents) / 2
 					median := ents[k]

@@ -1,14 +1,18 @@
 package persistence
 
-import "xonlab.com/frozra/v1/persistence/util"
+import (
+	"xonlab.com/frozra/v1/persistence/util"
+)
 
-// bst uses to find the maximum lower range of incoming key
+// bst stored every table's minimum key and its corresponding file name.
+// when searching in l0 or l1 table it will check bst firstly then return
+// the address of the table closest to the target key.
 type node struct {
 	root       *node
 	left       *node
 	right      *node
-	lowerRange uint32
-	index      []uint32
+	lowerRange uint32   // minimum key
+	index      []uint32 //file name
 }
 
 func (n *node) put(lowerRange, index uint32) {

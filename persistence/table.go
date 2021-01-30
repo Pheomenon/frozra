@@ -27,7 +27,8 @@ type table struct {
 	sync.RWMutex
 }
 
-func newTable(path string, index uint32) *table {
+// readTable return table's content
+func readTable(path string, index uint32) *table {
 	path = util.TablePath(path, index)
 	fp, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	if err != nil {
