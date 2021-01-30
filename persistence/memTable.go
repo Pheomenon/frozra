@@ -143,14 +143,37 @@ func (h *hashMap) persistence(path string, index uint32) {
 		panic(fmt.Sprintf("unable to flush memory table, error: %v", err))
 	}
 	defer fp.Close()
-	fp.Write(h.buf[0:h.currentOffset])
+
+	// traverse every key-value pair and copy its content.
+	// because memory table just append entry's content and change entry's value
+	// if a entry updated frequently that will waste massive buffer.
+	var content bytes.Buffer
+	content.Grow(len(h.buf))
+	// this var use to store the real entry position(origin position - duplicate key caused offset)
+	var tablePosition uint32
+	for hash, position := range h.concurrentMap {
+		tablePosition = uint32(content.Len())
+		// key length
+		content.Write(h.buf[position : position+4])
+		// value length
+		content.Write(h.buf[position+4 : position+8])
+		// key content
+		keyLength := binary.BigEndian.Uint32(h.buf[position : position+4])
+		content.Write(h.buf[position+8 : position+8+keyLength])
+		// value content
+		valLength := binary.BigEndian.Uint32(h.buf[position+4 : position+8])
+		content.Write(h.buf[position+8+keyLength : position+8+keyLength+valLength])
+		h.concurrentMap[hash] = tablePosition
+	}
+
+	fp.Write(content.Bytes())
 	slots := h.Len()
 
 	// use bloom filter to record every key-value pair
 	filter := bbloom.New(float64(slots), 0.01)
-	for kv := range h.concurrentMap {
+	for key := range h.concurrentMap {
 		buf := make([]byte, 4)
-		binary.BigEndian.PutUint32(buf, kv)
+		binary.BigEndian.PutUint32(buf, key)
 		filter.Add(buf)
 	}
 
@@ -158,7 +181,7 @@ func (h *hashMap) persistence(path string, index uint32) {
 	fib := make([]byte, 32)
 	filterJson := filter.JSONMarshal()
 	fi := &fileInfo{
-		metaOffset: h.currentOffset,
+		metaOffset: content.Len(),
 		entries:    slots,
 		minRange:   h.minRange,
 		maxRange:   h.maxRange,
