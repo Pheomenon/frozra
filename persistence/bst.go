@@ -1,9 +1,5 @@
 package persistence
 
-import (
-	"xonlab.com/frozra/v1/persistence/util"
-)
-
 // bst stored every table's minimum key and its corresponding file name.
 // when searching in l0 or l1 table it will check bst firstly then return
 // the address of the table closest to the target key.
@@ -11,16 +7,16 @@ type node struct {
 	root       *node
 	left       *node
 	right      *node
-	lowerRange uint32   // minimum key
-	index      []uint32 //file name
+	minimumKey uint32 // minimum key
+	fd         uint32 // file descriptor
 }
 
-func (n *node) put(lowerRange, index uint32) {
+func (n *node) put(lowerRange, fd uint32) {
 	for n != nil {
-		if n.lowerRange == lowerRange {
-			n.index = append(n.index, index)
+		if n.minimumKey == lowerRange {
+			n.fd = fd
 			return
-		} else if n.lowerRange > lowerRange {
+		} else if n.minimumKey > lowerRange {
 			if n.left != nil {
 				n = n.left
 			} else {
@@ -28,8 +24,8 @@ func (n *node) put(lowerRange, index uint32) {
 					left:       nil,
 					right:      nil,
 					root:       n,
-					index:      []uint32{index},
-					lowerRange: lowerRange,
+					fd:         fd,
+					minimumKey: lowerRange,
 				}
 				return
 			}
@@ -41,8 +37,8 @@ func (n *node) put(lowerRange, index uint32) {
 					left:       nil,
 					right:      nil,
 					root:       n,
-					index:      []uint32{index},
-					lowerRange: lowerRange,
+					fd:         fd,
+					minimumKey: lowerRange,
 				}
 				break
 			}
@@ -51,37 +47,38 @@ func (n *node) put(lowerRange, index uint32) {
 }
 
 func (n *node) largestLowerRange(r uint32) *node {
-	if n.lowerRange < r {
+	if n.minimumKey < r {
 		if n.right != nil {
 			return n.right.largestLowerRange(r)
 		}
 	}
-	if n.lowerRange > r {
+	if n.minimumKey > r {
 		if n.left != nil {
 			return n.left.largestLowerRange(r)
 		}
 	}
-	if n.lowerRange > r {
+	if n.minimumKey > r {
 		return nil
 	}
 	return n
 }
 
 func (n *node) deleteTable(index uint32) {
-	i, ok := util.InArray(n.index, index)
-	if ok {
-		n.index[i] = n.index[len(n.index)-1]
-		n.index = n.index[:len(n.index)-1]
-		if len(n.index) != 0 {
-			return
-		}
-		if n.right != nil {
-			n = n.right
-			return
-		}
-		n = n.left
-		return
-	}
+	//TODO:
+	//i, ok := util.InArray(n.fd, index)
+	//if ok {
+	//	n.fd[i] = n.fd[len(n.fd)-1]
+	//	n.fd = n.fd[:len(n.fd)-1]
+	//	if len(n.fd) != 0 {
+	//		return
+	//	}
+	//	if n.right != nil {
+	//		n = n.right
+	//		return
+	//	}
+	//	n = n.left
+	//	return
+	//}
 
 	if n.right != nil {
 		n.right.deleteTable(index)
@@ -104,34 +101,36 @@ func NewTree() *tree {
 }
 
 func (t *tree) put(lowerRange, index uint32) {
-	if t.root == nil {
-		t.root = &node{
-			lowerRange: lowerRange,
-			index:      []uint32{index},
-			left:       nil,
-			right:      nil,
-			root:       t.root,
-		}
-		return
-	}
+	//TODO:
+	//if t.root == nil {
+	//	t.root = &node{
+	//		minimumKey: lowerRange,
+	//		fd:         []uint32{index},
+	//		left:       nil,
+	//		right:      nil,
+	//		root:       t.root,
+	//	}
+	//	return
+	//}
 	t.root.put(lowerRange, index)
 }
 
 func (t *tree) deleteTable(index uint32) {
-	i, ok := util.InArray(t.root.index, index)
-	if ok {
-		t.root.index[i] = t.root.index[len(t.root.index)-1]
-		t.root.index = t.root.index[:len(t.root.index)-1]
-		if len(t.root.index) != 0 {
-			return
-		}
-		if t.root.right != nil {
-			t.root = t.root.right
-			return
-		}
-		t.root = t.root.left
-		return
-	}
+	//TODO:
+	//i, ok := util.InArray(t.root.fd, index)
+	//if ok {
+	//	t.root.fd[i] = t.root.fd[len(t.root.fd)-1]
+	//	t.root.fd = t.root.fd[:len(t.root.fd)-1]
+	//	if len(t.root.fd) != 0 {
+	//		return
+	//	}
+	//	if t.root.right != nil {
+	//		t.root = t.root.right
+	//		return
+	//	}
+	//	t.root = t.root.left
+	//	return
+	//}
 	if t.root.right != nil {
 		t.root.right.deleteTable(index)
 	}
@@ -144,7 +143,7 @@ func (t *tree) largestLowerRange(r uint32) *node {
 	if t.root == nil {
 		return nil
 	}
-	if t.root.lowerRange < r {
+	if t.root.minimumKey < r {
 		if t.root.right != nil {
 			n := t.root.right.largestLowerRange(r)
 			if n != nil {
@@ -152,12 +151,12 @@ func (t *tree) largestLowerRange(r uint32) *node {
 			}
 		}
 	}
-	if t.root.lowerRange > r {
+	if t.root.minimumKey > r {
 		if t.root.left != nil {
 			return t.root.left.largestLowerRange(r)
 		}
 	}
-	if t.root.lowerRange > r {
+	if t.root.minimumKey > r {
 		return nil
 	}
 	return t.root
@@ -171,7 +170,7 @@ func (t *tree) allLargestRange(r uint32) []*node {
 			break
 		}
 		nodes = append(nodes, n)
-		r = n.lowerRange - 1
+		r = n.minimumKey - 1
 	}
 	return nodes
 }
