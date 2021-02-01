@@ -3,8 +3,11 @@ package util
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"hash/crc32"
 	"os"
 )
+
+var CrcTable = crc32.MakeTable(crc32.Castagnoli)
 
 func InArray(arr []uint32, val uint32) (index int, exists bool) {
 	exists = false
@@ -17,6 +20,13 @@ func InArray(arr []uint32, val uint32) (index int, exists bool) {
 		}
 	}
 	return
+}
+
+func Hashing(key []byte) uint32 {
+	c := crc32.New(CrcTable)
+	c.Write(key)
+	hash := c.Sum32()
+	return hash
 }
 
 func TablePath(abs string, index uint32) string {

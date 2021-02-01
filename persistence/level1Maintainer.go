@@ -5,27 +5,27 @@ import (
 	"sync"
 )
 
-type levelMaintainer struct {
+type level1Maintainer struct {
 	//tables  []*table
 	indexer *tree
 	sync.RWMutex
 }
 
-func newLevelMaintainer() *levelMaintainer {
-	return &levelMaintainer{
+func newLevel1Maintainer() *level1Maintainer {
+	return &level1Maintainer{
 		//tables:  make([]*table, 0),
 		indexer: NewTree(),
 	}
 }
 
-func (lm *levelMaintainer) addTable(t *table, index uint32) {
+func (lm *level1Maintainer) addTable(t *table, index uint32) {
 	lm.Lock()
 	defer lm.Unlock()
 	//lm.tables = append(lm.tables, t)
 	lm.indexer.put(t.fileInfo.minRange, index)
 }
 
-func (lm *levelMaintainer) delTable(index uint32) {
+func (lm *level1Maintainer) delTable(index uint32) {
 	lm.Lock()
 	defer lm.Unlock()
 	lm.indexer.deleteTable(index)
@@ -39,30 +39,32 @@ func (lm *levelMaintainer) delTable(index uint32) {
 	//}
 }
 
-func (lm *levelMaintainer) get(key []byte) ([]byte, bool) {
+func (lm *level1Maintainer) get(key []byte) ([]byte, bool) {
 	lm.RLock()
 	defer lm.RUnlock()
 	c := crc32.New(CrcTable)
 	c.Write(key)
-	hash := c.Sum32()
-	nodes := lm.indexer.allLargestRange(hash)
-
-	for _, node := range nodes {
-		for _, id := range node.index {
-			t := lm.getTable(id)
-			if t != nil {
-				val, exist := t.Get(key)
-				if exist {
-					return val, true
-				}
-			}
-		}
-	}
+	//TODO:
+	//hash := c.Sum32()
+	//nodes := lm.indexer.allLargestRange(hash)
+	//
+	//for _, node := range nodes {
+	//	for _, id := range node.index {
+	//		//
+	//		t := lm.getTable(id)
+	//		if t != nil {
+	//			val, exist := t.Get(key)
+	//			if exist {
+	//				return val, true
+	//			}
+	//		}
+	//	}
+	//}
 	return nil, false
 }
 
-// TODO:
-func (lm *levelMaintainer) getTable(index uint32) *table {
+// TODO: return level1Maintainer's table but now it should return fd.
+func (lm *level1Maintainer) getTable(index uint32) *table {
 	//for _, t := range lm.tables {
 	//	if t.ID() == index {
 	//		return t

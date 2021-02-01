@@ -20,8 +20,8 @@ type request struct {
 type lsm struct {
 	setting           Setting
 	writeChan         chan *request
-	l0Maintainer      *levelMaintainer
-	l1Maintainer      *levelMaintainer
+	l0Maintainer      *level0Maintainer
+	l1Maintainer      *level1Maintainer
 	absPath           string
 	metadata          *metadata
 	memoryTable       *hashMap
@@ -45,13 +45,14 @@ func New(setting Setting) (*lsm, error) {
 		return nil, err
 	}
 
-	l0Maintainer := newLevelMaintainer()
-	for _, l0File := range metadata.L0Files {
-		t := readTable(absPath, l0File.Index)
-		l0Maintainer.addTable(t, l0File.Index)
-	}
+	l0Maintainer, err := loadFilter(absPath)
+	//TODO:
+	//for _, l0File := range metadata.L0Files {
+	//	t := readTable(absPath, l0File.Index)
+	//	l0Maintainer.addTable(t, l0File.Index)
+	//}
 
-	l1Maintainer := newLevelMaintainer()
+	l1Maintainer := newLevel1Maintainer()
 	for _, l1File := range metadata.L1Files {
 		t := readTable(absPath, l1File.Index)
 		l1Maintainer.addTable(t, l1File.Index)
@@ -150,13 +151,14 @@ func (l *lsm) Get(key []byte) ([]byte, bool) {
 	//TODO:
 	//l0 就不再弄索引树了，直接用bloom过滤器，
 	//l1 的table size是有序的，后期应该换掉bst，用一个可以直接查到最接近但比目标key小的数据结构
-	val, exist = l.l0Maintainer.get(key)
+	val, exist = l.l0Maintainer.get(key, l.absPath)
 	if exist {
 		return val, exist
 	}
 	return l.l1Maintainer.get(key)
 }
 
+// Close save all data and metadata form memory to disk
 func (l *lsm) Close() {
 	l.loadBalanceCloser.SignalAndWait()
 	l.compactCloser.SignalAndWait()
@@ -169,14 +171,19 @@ func (l *lsm) Close() {
 	if err != nil {
 		logrus.Fatalf("metadata: unable to save the metadata %s", err.Error())
 	}
+	err = l.l0Maintainer.save(l.absPath)
+	if err != nil {
+		logrus.Fatalf("filter: unable to save the filter %s", err.Error())
+	}
 }
 
 func (l *lsm) flushMemory(swap *hashMap) {
 	nextID := l.metadata.nextFileID()
 	swap.persistence(l.absPath, nextID)
 	l.metadata.addL0File(swap.records, swap.minRange, swap.maxRange, swap.occupiedSpace(), nextID)
-	table := readTable(l.absPath, nextID)
-	l.l0Maintainer.addTable(table, nextID)
+	//table := readTable(l.absPath, nextID)
+	//add l0.addTable
+	l.l0Maintainer.addTable(swap, nextID)
 	//l.Lock()
 	//l.memoryTable = nil
 	//l.Unlock()
@@ -224,12 +231,14 @@ func (l *lsm) compactL0() {
 	t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
 	l.metadata.mutex.Unlock()
 	l.merge(t1, t2)
-	l.l0Maintainer.delTable(t1.ID())
+	//TODO:
+	//l.l0Maintainer.delTable(t1.ID())
 	t1.close()
 	util.RemoveTable(l.absPath, t1.ID())
 	l.metadata.deleteL0Table(t1.ID())
 	logrus.Infof("compaction: l0 file has been deleted %d", t1.ID())
-	l.l0Maintainer.delTable(t2.ID())
+	//TODO:
+	//l.l0Maintainer.delTable(t2.ID())
 	t2.close()
 	util.RemoveTable(l.absPath, t2.ID())
 	l.metadata.deleteL0Table(t2.ID())

@@ -140,7 +140,7 @@ func (t *tableMerger) finish() []byte {
 		minRange:   t.min,
 		maxRange:   t.max,
 		entries:    slots,
-		filterSize: fl,
+		//filterSize: fl,
 	}
 	//gob means go binary it use to exchange data flow with encoder and decoder
 	e := gob.NewEncoder(t.buf)

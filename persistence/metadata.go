@@ -89,8 +89,10 @@ func (m *metadata) save(absPath string) error {
 	if err != nil {
 		return err
 	}
+	defer fp.Close()
 	encoder := gob.NewEncoder(fp)
 	return encoder.Encode(m)
+
 }
 
 func (m *metadata) addL0File(records, minRange, maxRange uint32, size int, index uint32) {

@@ -38,6 +38,7 @@ func clean() {
 	os.Remove("./6.fza")
 	os.Remove("./7.fza")
 	os.Remove("./metadata")
+	os.Remove("./filter")
 }
 
 func TestClean(t *testing.T) {
@@ -246,6 +247,20 @@ func TestCompactL0(t *testing.T) {
 	//l.compactL0()
 	val, _ := l.Get([]byte("phenom66"))
 	if !bytes.Equal(val, []byte("froza66")) {
+		t.Fatalf("lsm get a unexpected value %s", val)
+	}
+}
+
+func TestLsm_GetInL0(t *testing.T) {
+	clean()
+	l := initLSM(t)
+	for i := 0; i < 100; i++ {
+		l.Set([]byte(fmt.Sprintf("key %d", i)), []byte(fmt.Sprintf("%d", i)))
+	}
+	l.Close()
+	l = initLSM(t)
+	val, _ := l.Get([]byte(fmt.Sprintf("key %d", 43)))
+	if !bytes.Equal(val, []byte("43")) {
 		t.Fatalf("lsm get a unexpected value %s", val)
 	}
 }

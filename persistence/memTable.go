@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"github.com/AndreasBriese/bbloom"
 	"hash/crc32"
 	"os"
 	"path/filepath"
@@ -169,23 +168,19 @@ func (h *hashMap) persistence(path string, index uint32) {
 	fp.Write(content.Bytes())
 	slots := h.Len()
 
-	// use bloom filter to record every key-value pair
-	filter := bbloom.New(float64(slots), 0.01)
-	for key := range h.concurrentMap {
-		buf := make([]byte, 4)
-		binary.BigEndian.PutUint32(buf, key)
-		filter.Add(buf)
-	}
-
 	// encode this table's info
+	// TODO: this unnecessary to add filter to l0 file it should be maintained by l0 maintainer
+
 	fib := make([]byte, 32)
-	filterJson := filter.JSONMarshal()
+	//
+	//filterJson := filter.JSONMarshal()
+	//
 	fi := &fileInfo{
 		metaOffset: content.Len(),
 		entries:    slots,
 		minRange:   h.minRange,
 		maxRange:   h.maxRange,
-		filterSize: len(filterJson),
+		//filterSize: len(filterJson),
 	}
 	fi.Encode(fib)
 
@@ -197,7 +192,7 @@ func (h *hashMap) persistence(path string, index uint32) {
 		panic("unable to encode concurrent map")
 	}
 	fp.Write(metaBuf.Bytes())
-	fp.Write(filterJson)
+	//fp.Write(filterJson)
 	fp.Write(fib)
 }
 
@@ -210,7 +205,7 @@ type fileInfo struct {
 	entries    int
 	minRange   uint32
 	maxRange   uint32
-	filterSize int
+	//filterSize int
 }
 
 func (fi *fileInfo) Decode(buf []byte) {
@@ -218,7 +213,7 @@ func (fi *fileInfo) Decode(buf []byte) {
 	fi.entries = int(binary.BigEndian.Uint32(buf[4:8]))
 	fi.minRange = binary.BigEndian.Uint32(buf[8:16])
 	fi.maxRange = binary.BigEndian.Uint32(buf[16:24])
-	fi.filterSize = int(binary.BigEndian.Uint32(buf[24:32]))
+	//fi.filterSize = int(binary.BigEndian.Uint32(buf[24:32]))
 }
 
 func (fi *fileInfo) Encode(buf []byte) {
@@ -226,5 +221,5 @@ func (fi *fileInfo) Encode(buf []byte) {
 	binary.BigEndian.PutUint32(buf[4:8], uint32(fi.entries))
 	binary.BigEndian.PutUint32(buf[8:16], fi.minRange)
 	binary.BigEndian.PutUint32(buf[16:24], fi.maxRange)
-	binary.BigEndian.PutUint32(buf[24:32], uint32(fi.filterSize))
+	//binary.BigEndian.PutUint32(buf[24:32], uint32(fi.filterSize))
 }

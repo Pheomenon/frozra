@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/AndreasBriese/bbloom"
-	"hash/crc32"
 	"io"
 	"os"
 	"sync"
@@ -46,10 +45,10 @@ func readTable(path string, index uint32) *table {
 	// get file info
 	fi.Decode(data[status.Size()-32 : status.Size()])
 
-	filter := bbloom.JSONUnmarshal(data[status.Size()-32-int64(fi.filterSize) : status.Size()-32])
+	//filter := bbloom.JSONUnmarshal(data[status.Size()-32-int64(fi.filterSize) : status.Size()-32])
 	metaBuf := new(bytes.Buffer)
-	// metaBuf saved all maps in this table
-	metaBuf.Write(data[fi.metaOffset : status.Size()-32-int64(fi.filterSize)])
+	// metaBuf saved all map's entry in this table
+	metaBuf.Write(data[fi.metaOffset : status.Size()-32])
 	offsetMap := map[uint32]uint32{}
 	decoder := gob.NewDecoder(metaBuf)
 	err = decoder.Decode(&offsetMap)
@@ -57,22 +56,20 @@ func readTable(path string, index uint32) *table {
 		panic(fmt.Sprintf("unable to decode map, error: %v", err))
 	}
 	return &table{
-		data:      data,
-		path:      path,
-		fileInfo:  fi,
-		size:      status.Size(),
-		fp:        fp,
-		status:    status,
-		filter:    &filter,
+		data:     data[0:fi.metaOffset], //this data field stored table's content
+		path:     path,
+		fileInfo: fi,
+		size:     status.Size(),
+		fp:       fp,
+		status:   status,
+		//filter:    &filter,
 		offsetMap: offsetMap,
 		index:     index,
 	}
 }
 
 func (t *table) Get(key []byte) ([]byte, bool) {
-	c := crc32.New(CrcTable)
-	c.Write(key)
-	hash := c.Sum32()
+	hash := util.Hashing(key)
 	if !t.exist(hash) {
 		return nil, false
 	}
