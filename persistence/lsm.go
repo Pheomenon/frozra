@@ -18,7 +18,7 @@ type request struct {
 }
 
 type lsm struct {
-	setting           Setting
+	setting           Conf
 	writeChan         chan *request
 	l0Maintainer      *level0Maintainer
 	l1Maintainer      *level1Maintainer
@@ -34,8 +34,8 @@ type lsm struct {
 	sync.RWMutex
 }
 
-func New(setting Setting) (*lsm, error) {
-	absPath, err := filepath.Abs(setting.path)
+func New(setting Conf) (*lsm, error) {
+	absPath, err := filepath.Abs(setting.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func New(setting Setting) (*lsm, error) {
 		writeChan:         make(chan *request, 1024),
 		absPath:           absPath,
 		metadata:          metadata,
-		memoryTable:       newHashMap(setting.memTableSize),
+		memoryTable:       newHashMap(setting.MemoryTableSize),
 		l0Maintainer:      l0Maintainer,
 		l1Maintainer:      l1Maintainer,
 		writeCloser:       y.NewCloser(1),
@@ -106,7 +106,7 @@ func (l *lsm) write(req *request) {
 	if !l.memoryTable.isEnoughSpace(len(req.key) + len(req.value) + 8) {
 		l.Lock()
 		l.swap = l.memoryTable
-		l.memoryTable = newHashMap(l.setting.memTableSize)
+		l.memoryTable = newHashMap(l.setting.MemoryTableSize)
 		l.Unlock()
 		l.flushDisk <- l.swap
 	}
@@ -253,7 +253,7 @@ loop:
 		default:
 			// check for l0Tables
 			l0Len := l.metadata.l0Len()
-			if l0Len >= l.setting.L0FileCapacity {
+			if l0Len >= l.setting.L0Capacity {
 				// if there is no file on the level 1, just push two level 0 tables to level1
 				if l.metadata.l1Len() == 0 {
 					l.compactL0()
@@ -290,7 +290,7 @@ loop:
 			break loop
 		default:
 			for _, l1f := range l.metadata.copyL1() {
-				if l1f.Size > uint32(l.setting.maxL1Size) {
+				if l1f.Size > uint32(l.setting.L1TableSize) {
 					logrus.Infof("load balancing: l1 file %d found which it larger than max l1 size", l1f.Index)
 					l1t := readTable(l.absPath, l1f.Index)
 					ents := l1t.entries()

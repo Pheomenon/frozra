@@ -9,7 +9,7 @@ import (
 )
 
 func TestLSM(t *testing.T) {
-	setting := DefaultSetting()
+	setting := LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -53,7 +53,7 @@ func TestClean(t *testing.T) {
 
 func TestConcurrent(t *testing.T) {
 	clean()
-	setting := DefaultSetting()
+	setting := LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -147,7 +147,7 @@ func TestConcurrent(t *testing.T) {
 
 func TestCompaction(t *testing.T) {
 	clean()
-	setting := DefaultSetting()
+	setting := LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -217,7 +217,7 @@ func TestDuplicateKey(t *testing.T) {
 }
 
 func initLSM(t *testing.T) *lsm {
-	setting := DefaultSetting()
+	setting := LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -285,6 +285,8 @@ func TestLsm_GetInL1(t *testing.T) {
 	val, _ := l.Get([]byte(fmt.Sprintf("key %d", 32)))
 	if !bytes.Equal(val, []byte("32")) {
 		t.Fatalf("lsm get a unexpected value %s", val)
+	} else {
+		t.Logf("lsm get a expected value %s", val)
 	}
 }
 
@@ -300,7 +302,7 @@ go tool pprof -svg cpu.out > cpu.svg
 */
 func BenchmarkLsm_Set(b *testing.B) {
 	clean()
-	setting := DefaultSetting()
+	setting := LoadConfigure()
 	l, _ := New(setting)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
