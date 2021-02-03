@@ -123,7 +123,7 @@ func (t *tableMerger) appendFileInfo(fi *fileInfo) {
 	}
 }
 
-// finish adds bloom filter to file info
+// finish save tableMerger to disk
 func (t *tableMerger) finish() []byte {
 	slots := len(t.offsetMap)
 	filter := bbloom.New(float64(slots), 0.01)
@@ -142,7 +142,6 @@ func (t *tableMerger) finish() []byte {
 		entries:    slots,
 		//filterSize: fl,
 	}
-	//gob means go binary it use to exchange data flow with encoder and decoder
 	e := gob.NewEncoder(t.buf)
 	err := e.Encode(t.offsetMap)
 
