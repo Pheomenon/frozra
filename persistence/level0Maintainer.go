@@ -132,6 +132,12 @@ func createFilter(filterName string) (*level0Maintainer, error) {
 	return newL0Maintainer(), nil
 }
 
-func (lm0 *level0Maintainer) delTable(index uint32) {
-
+func (lm0 *level0Maintainer) delTable(fd uint32) error {
+	lm0.Lock()
+	if _, ok := lm0.filter[fd]; !ok {
+		return os.ErrNotExist
+	}
+	delete(lm0.filter, fd)
+	lm0.Unlock()
+	return nil
 }
