@@ -46,11 +46,6 @@ func New(setting Setting) (*lsm, error) {
 	}
 
 	l0Maintainer, err := loadFilter(absPath)
-	//TODO:
-	//for _, l0File := range metadata.L0Files {
-	//	t := readTable(absPath, l0File.Index)
-	//	l0Maintainer.addTable(t, l0File.Index)
-	//}
 
 	l1Maintainer := newLevel1Maintainer()
 	for _, l1File := range metadata.L1Files {
@@ -148,9 +143,6 @@ func (l *lsm) Get(key []byte) ([]byte, bool) {
 		}
 	}
 
-	//TODO:
-	//l0 就不再弄索引树了，直接用bloom过滤器，
-	//l1 的table size是有序的，后期应该换掉bst，用一个可以直接查到最接近但比目标key小的数据结构
 	val, exist = l.l0Maintainer.get(key, l.absPath)
 	if exist {
 		return val, exist
@@ -179,14 +171,15 @@ func (l *lsm) Close() {
 
 func (l *lsm) flushMemory(swap *hashMap) {
 	nextID := l.metadata.nextFileID()
+	// persist swap to disk
 	swap.persistence(l.absPath, nextID)
+	// add swap's info to metadata
 	l.metadata.addL0File(swap.records, swap.minRange, swap.maxRange, swap.occupiedSpace(), nextID)
-	//table := readTable(l.absPath, nextID)
-	//add l0.addTable
+	// add filter to swap
 	l.l0Maintainer.addTable(swap, nextID)
-	//l.Lock()
-	//l.memoryTable = nil
-	//l.Unlock()
+	l.Lock()
+	l.swap = nil
+	l.Unlock()
 }
 
 func (l *lsm) merge(t1, t2 *table) {
@@ -221,7 +214,7 @@ func (l *lsm) saveL1Table(buf []byte) {
 	l.l1Maintainer.addTable(newTable, fileID)
 
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), fileID)
-	logrus.Infof("comapction: new l1 file has beed added %d", fileID)
+	logrus.Infof("comapction: new l1 file has beed added %d.fza", fileID)
 }
 
 //compactL0 compress the two densest tables into one then push that to level 1
@@ -231,18 +224,24 @@ func (l *lsm) compactL0() {
 	t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
 	l.metadata.mutex.Unlock()
 	l.merge(t1, t2)
-	//TODO:
-	//l.l0Maintainer.delTable(t1.ID())
+
+	err := l.l0Maintainer.delTable(t1.ID())
+	if err != nil {
+		logrus.Warnf("compaction: l0 filter not exist: %d.fza", t1.ID())
+	}
 	t1.close()
 	util.RemoveTable(l.absPath, t1.ID())
 	l.metadata.deleteL0Table(t1.ID())
-	logrus.Infof("compaction: l0 file has been deleted %d", t1.ID())
-	//TODO:
-	//l.l0Maintainer.delTable(t2.ID())
+	logrus.Infof("compaction: l0 file has been deleted %d.fza", t1.ID())
+
+	err = l.l0Maintainer.delTable(t2.ID())
+	if err != nil {
+		logrus.Warnf("compaction: l0 filter not exist: %d.fza", t1.ID())
+	}
 	t2.close()
 	util.RemoveTable(l.absPath, t2.ID())
 	l.metadata.deleteL0Table(t2.ID())
-	logrus.Infof("comapction: l0 file has been deleted %d", t2.ID())
+	logrus.Infof("comapction: l0 file has been deleted %d.fza", t2.ID())
 }
 
 func (l *lsm) runCompaction(closer *y.Closer) {

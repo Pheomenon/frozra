@@ -1,74 +1,63 @@
 package persistence
 
 import (
-	"hash/crc32"
+	"encoding/binary"
+	"fmt"
+	"github.com/sirupsen/logrus"
+	"os"
+	"strconv"
 	"sync"
+	"xonlab.com/frozra/v1/persistence/util"
 )
 
 type level1Maintainer struct {
-	//tables  []*table
-	indexer *tree
+	indexer *indexer
 	sync.RWMutex
 }
 
 func newLevel1Maintainer() *level1Maintainer {
 	return &level1Maintainer{
-		//tables:  make([]*table, 0),
-		indexer: NewTree(),
+		indexer: NewIndexer(),
 	}
 }
 
 func (lm *level1Maintainer) addTable(t *table, index uint32) {
 	lm.Lock()
 	defer lm.Unlock()
-	//lm.tables = append(lm.tables, t)
 	lm.indexer.put(t.fileInfo.minRange, index)
 }
 
 func (lm *level1Maintainer) delTable(index uint32) {
 	lm.Lock()
 	defer lm.Unlock()
-	lm.indexer.deleteTable(index)
-	//for i, table := range lm.tables {
-	//	if table.ID() == index {
-	//		lm.tables[i] = lm.tables[len(lm.tables)-1]
-	//		lm.tables[len(lm.tables)-1] = nil
-	//		lm.tables = lm.tables[:len(lm.tables)-1]
-	//		break
-	//	}
-	//}
+	lm.indexer.delete(index)
+	//remove this table in disk
+	s := strconv.Itoa(int(index))
+	err := os.Remove(fmt.Sprintf("./%s", s))
+	if err != nil {
+		logrus.Debugf("l1M: remove table error: %v", err)
+	}
 }
 
+// get check indexer and return corresponding value if it existed
 func (lm *level1Maintainer) get(key []byte) ([]byte, bool) {
 	lm.RLock()
 	defer lm.RUnlock()
-	c := crc32.New(CrcTable)
-	c.Write(key)
-	//TODO:
-	//hash := c.Sum32()
-	//nodes := lm.indexer.allLargestRange(hash)
-	//
-	//for _, node := range nodes {
-	//	for _, id := range node.index {
-	//		//
-	//		t := lm.getTable(id)
-	//		if t != nil {
-	//			val, exist := t.Get(key)
-	//			if exist {
-	//				return val, true
-	//			}
-	//		}
-	//	}
-	//}
-	return nil, false
+	hash := util.Hashing(key)
+	target := lm.indexer.floor(hash)
+	table := readTable("./", target.fd)
+	return lm.searchKey(table, hash)
 }
 
-// TODO: return level1Maintainer's table but now it should return fd.
-func (lm *level1Maintainer) getTable(index uint32) *table {
-	//for _, t := range lm.tables {
-	//	if t.ID() == index {
-	//		return t
-	//	}
-	//}
-	return nil
+func (lm *level1Maintainer) searchKey(t *table, hash uint32) ([]byte, bool) {
+	position, ok := t.offsetMap[hash]
+	if !ok {
+		return nil, false
+	}
+	keyLength := binary.BigEndian.Uint32(t.data[position : position+4])
+	position += 4
+	valLength := binary.BigEndian.Uint32(t.data[position : position+4])
+	position += 4
+	position += keyLength
+	return t.data[position : position+valLength], true
 }

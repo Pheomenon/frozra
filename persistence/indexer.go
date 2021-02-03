@@ -127,9 +127,15 @@ func (i *indexer) get(minimumKey uint32) uint32 {
 }
 
 func (i *indexer) floor(minimumKey uint32) *node {
+	if i.root == nil {
+		return nil
+	}
 	return i.root.floor(minimumKey)
 }
 
 func (i *indexer) delete(minimumKey uint32) {
+	if i.root == nil {
+		return
+	}
 	i.root.delete(minimumKey)
 }

@@ -41,6 +41,12 @@ func clean() {
 	os.Remove("./filter")
 }
 
+func produceEntry(l *lsm, start, end int) {
+	for i := start; i < end; i++ {
+		l.Set([]byte(fmt.Sprintf("key %d", i)), []byte(fmt.Sprintf("%d", i)))
+	}
+}
+
 func TestClean(t *testing.T) {
 	clean()
 }
@@ -140,6 +146,7 @@ func TestConcurrent(t *testing.T) {
 }
 
 func TestCompaction(t *testing.T) {
+	clean()
 	setting := DefaultSetting()
 	l, err := New(setting)
 	if err != nil {
@@ -261,6 +268,22 @@ func TestLsm_GetInL0(t *testing.T) {
 	l = initLSM(t)
 	val, _ := l.Get([]byte(fmt.Sprintf("key %d", 43)))
 	if !bytes.Equal(val, []byte("43")) {
+		t.Fatalf("lsm get a unexpected value %s", val)
+	}
+}
+
+func TestLsm_GetInL1(t *testing.T) {
+	clean()
+	l := initLSM(t)
+	produceEntry(l, 0, 100)
+	l.Close()
+	l = initLSM(t)
+	produceEntry(l, 100, 200)
+	l.Close()
+	l = initLSM(t)
+	l.compactL0()
+	val, _ := l.Get([]byte(fmt.Sprintf("key %d", 32)))
+	if !bytes.Equal(val, []byte("32")) {
 		t.Fatalf("lsm get a unexpected value %s", val)
 	}
 }
