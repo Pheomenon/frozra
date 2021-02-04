@@ -22,6 +22,7 @@ func (n *node) Addr() string {
 	return n.addr
 }
 
+// ShouldProcess return which node should process this key
 func (n *node) ShouldProcess(key string) (string, bool) {
 	addr, _ := n.Get(key)
 	return addr, addr == n.addr

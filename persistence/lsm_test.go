@@ -9,6 +9,7 @@ import (
 )
 
 func TestLSM(t *testing.T) {
+	clean()
 	setting := LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
@@ -34,6 +35,7 @@ func clean() {
 	os.Remove("./1.fza")
 	os.Remove("./2.fza")
 	os.Remove("./3.fza")
+	os.Remove("./4.fza")
 	os.Remove("./5.fza")
 	os.Remove("./6.fza")
 	os.Remove("./7.fza")
@@ -225,15 +227,15 @@ func initLSM(t *testing.T) *lsm {
 	return l
 }
 
-func TestDuplicateKeyInL0(t *testing.T) {
+func TestDuplicateKeyInL1(t *testing.T) {
+	clean()
 	l := initLSM(t)
 	key := []byte("froza")
-	for i := 0; i < 3; i++ {
+	for i := 0; i <= 1<<16; i++ {
 		l.Set(key, []byte(fmt.Sprintf("%b", i)))
 	}
-	l.memoryTable.persistence("./", 1)
 	val, _ := l.Get([]byte("froza"))
-	if !bytes.Equal(val, []byte(fmt.Sprintf("%b", 2))) {
+	if !bytes.Equal(val, []byte(fmt.Sprintf("%b", 1<<16))) {
 		t.Fatalf("lsm get a unexpected value %s", val)
 	}
 }

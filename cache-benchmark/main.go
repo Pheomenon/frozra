@@ -1,12 +1,12 @@
 package main
 
 import (
-	"../cache-benchmark/cacheClient"
 	"flag"
 	"fmt"
 	"math/rand"
 	"strings"
 	"time"
+	"xonlab.com/frozra/v1/cache-benchmark/cacheClient"
 )
 
 type statistic struct {

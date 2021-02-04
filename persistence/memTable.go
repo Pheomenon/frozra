@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
 	"path/filepath"
@@ -37,7 +38,7 @@ func newHashMap(size int) *hashMap {
 func (h *hashMap) Set(key, value []byte) {
 	h.Lock()
 	c := crc32.New(CrcTable)
-	c.Write(key)
+	_, _ = c.Write(key)
 	hash := c.Sum32()
 	oldOffSet := h.currentOffset
 	keyLength := len(key)
@@ -62,14 +63,16 @@ func (h *hashMap) Set(key, value []byte) {
 	h.concurrentMap[hash] = uint32(oldOffSet)
 	h.Unlock()
 	h.setRange(hash)
-	atomic.AddUint32(&h.records, 1)
+	if uint32(h.Len()) != h.records {
+		atomic.AddUint32(&h.records, 1)
+	}
 }
 
 func (h *hashMap) Get(item []byte) ([]byte, bool) {
 	h.RLock()
 	defer h.RUnlock()
 	c := crc32.New(CrcTable)
-	c.Write(item)
+	_, _ = c.Write(item)
 	hash := c.Sum32()
 	position, ok := h.concurrentMap[hash]
 	if !ok {
@@ -165,7 +168,10 @@ func (h *hashMap) persistence(path string, index uint32) {
 		h.concurrentMap[hash] = tablePosition
 	}
 
-	fp.Write(content.Bytes())
+	_, err = fp.Write(content.Bytes())
+	if err != nil {
+		logrus.Fatalf("persistence: can't save data to disk: %v", err)
+	}
 	slots := h.Len()
 
 	// encode this table's info
