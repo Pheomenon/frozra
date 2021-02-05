@@ -39,6 +39,11 @@ func clean() {
 	os.Remove("./5.fza")
 	os.Remove("./6.fza")
 	os.Remove("./7.fza")
+	os.Remove("./8.fza")
+	os.Remove("./9.fza")
+	os.Remove("./10.fza")
+	os.Remove("./11.fza")
+	os.Remove("./12.fza")
 	os.Remove("./metadata")
 	os.Remove("./filter")
 }
@@ -61,8 +66,7 @@ func TestConcurrent(t *testing.T) {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	var wg sync.WaitGroup
-	wg.Add(1)
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		for i := 0; i < 100; i++ {
 			key := []byte("phenom" + string(rune(i)))
@@ -154,50 +158,35 @@ func TestCompaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
-	for i := 0; i < 100; i++ {
-		key := []byte("phenom" + string(rune(i)))
-		value := []byte("froza" + string(rune(i)))
-		l.Set(key, value)
+	produceEntry(l, 0, 100)
+	l.Close()
+	l, err = New(setting)
+	if err != nil {
+		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
+	produceEntry(l, 100, 200)
+	l.Close()
+	l, err = New(setting)
+	if err != nil {
+		t.Fatalf("lsm is expected to open but got error %s", err.Error())
+	}
+	produceEntry(l, 300, 400)
+	l.Close()
+	l, err = New(setting)
+	if err != nil {
+		t.Fatalf("lsm is expected to open but got error %s", err.Error())
+	}
+	produceEntry(l, 50, 200)
 	l.Close()
 	l, err = New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	for i := 0; i < 100; i++ {
-		key := []byte("phenom" + string(rune(i)))
-		value := []byte("froza" + string(rune(i)))
-		l.Set(key, value)
-	}
-	l.Close()
-	l, err = New(setting)
-	if err != nil {
-		t.Fatalf("lsm is expected to open but got error %s", err.Error())
-	}
-	for i := 0; i < 100; i++ {
-		key := []byte("phenom" + string(rune(i)))
-		value := []byte("froza" + string(rune(i)))
-		l.Set(key, value)
-	}
-	l.Close()
-	l, err = New(setting)
-	if err != nil {
-		t.Fatalf("lsm is expected to open but got error %s", err.Error())
-	}
-	for i := 50; i < 200; i++ {
-		key := []byte("phenom" + string(rune(i)))
-		value := []byte("froza" + string(rune(i)))
-		l.Set(key, value)
-	}
-	l.Close()
-	l, err = New(setting)
-	if err != nil {
-		t.Fatalf("lsm is expected to open but got error %s", err.Error())
-	}
-	for i := 0; i < 100; i++ {
-		key := []byte("phenom" + string(rune(i)))
-		value := []byte("froza" + string(rune(i)))
-		l.Set(key, value)
+		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
+		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
+			t.Fatalf("lsm get a unexpected value %s", val)
+		}
 	}
 	l.Close()
 }
@@ -253,7 +242,6 @@ func TestCompactL0(t *testing.T) {
 	}
 	l.Close()
 	l = initLSM(t)
-	//l.compactL0()
 	val, _ := l.Get([]byte("phenom66"))
 	if !bytes.Equal(val, []byte("froza66")) {
 		t.Fatalf("lsm get a unexpected value %s", val)
@@ -283,12 +271,28 @@ func TestLsm_GetInL1(t *testing.T) {
 	produceEntry(l, 100, 200)
 	l.Close()
 	l = initLSM(t)
-	l.compactL0()
+	produceEntry(l, 200, 300)
+	l.Close()
+	l = initLSM(t)
 	val, _ := l.Get([]byte(fmt.Sprintf("key %d", 32)))
 	if !bytes.Equal(val, []byte("32")) {
 		t.Fatalf("lsm get a unexpected value %s", val)
 	} else {
 		t.Logf("lsm get a expected value %s", val)
+	}
+}
+
+func TestLsm_Mixed(t *testing.T) {
+	clean()
+	l := initLSM(t)
+	produceEntry(l, 0, 1<<8)
+	l.Close()
+	l = initLSM(t)
+	for i := 0; i <= 1<<8; i++ {
+		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
+		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
+			t.Fatalf("lsm get a unexpected value %s", val)
+		}
 	}
 }
 
