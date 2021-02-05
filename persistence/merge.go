@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
-	"github.com/AndreasBriese/bbloom"
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
@@ -123,24 +122,19 @@ func (t *tableMerger) appendFileInfo(fi *fileInfo) {
 	}
 }
 
-// finish save tableMerger to disk
-func (t *tableMerger) finish() []byte {
+// setTableInfo setup table's info
+func (t *tableMerger) setTableInfo() []byte {
 	slots := len(t.offsetMap)
-	filter := bbloom.New(float64(slots), 0.01)
 	buf := make([]byte, 4)
 	for key := range t.offsetMap {
 		binary.BigEndian.PutUint32(buf, key)
-		filter.Add(buf)
 	}
 	mo := t.buf.Len()
-	fJSON := filter.JSONMarshal()
-	fl := len(fJSON)
 	fi := &fileInfo{
 		metaOffset: mo,
 		minRange:   t.min,
 		maxRange:   t.max,
 		entries:    slots,
-		//filterSize: fl,
 	}
 	e := gob.NewEncoder(t.buf)
 	err := e.Encode(t.offsetMap)
@@ -148,12 +142,8 @@ func (t *tableMerger) finish() []byte {
 	if err != nil {
 		logrus.Fatalf("tableMerger: unable to encode merged hashmap %s", err.Error())
 	}
-	n, err := t.buf.Write(fJSON)
 	if err != nil {
 		logrus.Fatalf("tableMerger: unable to write filter to the buffer %s", err.Error())
-	}
-	if n != fl {
-		logrus.Fatalf("tableMerger: unable to write filter completley to the buffer expected %d got %d", fl, n)
 	}
 	t.appendFileInfo(fi)
 	return t.buf.Bytes()
