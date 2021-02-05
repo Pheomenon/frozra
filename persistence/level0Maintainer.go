@@ -1,10 +1,12 @@
 package persistence
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"github.com/AndreasBriese/bbloom"
+	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"io"
 	"os"
@@ -132,12 +134,32 @@ func createFilter(filterName string) (*level0Maintainer, error) {
 	return newL0Maintainer(), nil
 }
 
-func (lm0 *level0Maintainer) delTable(fd uint32) error {
+func (lm0 *level0Maintainer) delTable(fd uint32) {
 	lm0.Lock()
 	if _, ok := lm0.filter[fd]; !ok {
-		return os.ErrNotExist
+		logrus.Warnf("level 0 maintainer: don't found the table that should be deleted")
 	}
 	delete(lm0.filter, fd)
 	lm0.Unlock()
-	return nil
+}
+
+// compress two tables into one
+func (lm0 *level0Maintainer) compress(t1, t2 *table) *table {
+	content := bytes.NewBuffer(t1.data)
+	content.Grow(len(t1.data) + len(t2.data))
+	content.Write(t2.data)
+	t1.data = content.Bytes()
+	offset := uint32(t1.fileInfo.metaOffset)
+	for key, val := range t2.offsetMap {
+		t1.offsetMap[key] = val + offset
+	}
+	if t2.fileInfo.maxRange > t1.fileInfo.maxRange {
+		t1.fileInfo.maxRange = t2.fileInfo.maxRange
+	}
+	if t2.fileInfo.minRange < t1.fileInfo.minRange {
+		t1.fileInfo.minRange = t2.fileInfo.minRange
+	}
+	t1.fileInfo.metaOffset += t2.fileInfo.metaOffset
+	t1.fileInfo.entries += t2.fileInfo.entries
+	return t1
 }

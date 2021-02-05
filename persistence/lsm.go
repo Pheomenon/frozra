@@ -1,14 +1,13 @@
 package persistence
 
 import (
+	"github.com/dgraph-io/badger/y"
 	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
 	"path/filepath"
 	"sync"
 	"xonlab.com/frozra/v1/persistence/util"
-
-	"github.com/dgraph-io/badger/y"
 )
 
 type request struct {
@@ -51,6 +50,7 @@ func New(setting Conf) (*lsm, error) {
 	for _, l1File := range metadata.L1Files {
 		t := readTable(absPath, l1File.Index)
 		l1Maintainer.addTable(t, l1File.Index)
+		t.release()
 	}
 
 	lsm := &lsm{
@@ -185,12 +185,12 @@ func (l *lsm) flushMemory(swap *hashMap) {
 func (l *lsm) merge(t1, t2 *table) {
 	t1.SeekBegin()
 	t2.SeekBegin()
-	maintainer := newTableMerger(int(t1.size + t2.size))
-	maintainer.append(t1.fp, int64(t1.fileInfo.metaOffset))
-	maintainer.append(t2.fp, int64(t2.fileInfo.metaOffset))
-	maintainer.merge(t1.offsetMap, 0)
-	maintainer.merge(t2.offsetMap, uint32(t1.fileInfo.metaOffset))
-	buf := maintainer.finish()
+	merger := newTableMerger(int(t1.size + t2.size))
+	merger.append(t1.fp, int64(t1.fileInfo.metaOffset))
+	merger.append(t2.fp, int64(t2.fileInfo.metaOffset))
+	merger.merge(t1.offsetMap, 0)
+	merger.merge(t2.offsetMap, uint32(t1.fileInfo.metaOffset))
+	buf := merger.setTableInfo()
 	l.saveL1Table(buf)
 }
 
@@ -201,6 +201,7 @@ func (l *lsm) saveL1Table(buf []byte) {
 		logrus.Fatalf("compaction: unable to create new while pushing to level 1 %s", err.Error())
 		return
 	}
+	defer fp.Close()
 	n, err := fp.Write(buf)
 	if err != nil {
 		logrus.Fatalf("compaction: unable to write to new level 1 table %s", err.Error())
@@ -217,33 +218,6 @@ func (l *lsm) saveL1Table(buf []byte) {
 	logrus.Infof("comapction: new l1 file has beed added %d.fza", fileID)
 }
 
-//compactL0 compress the two densest tables into one then push that to level 1
-func (l *lsm) compactL0() {
-	l.metadata.sortL0()
-	l.metadata.mutex.Lock()
-	t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
-	l.metadata.mutex.Unlock()
-	l.merge(t1, t2)
-
-	err := l.l0Maintainer.delTable(t1.ID())
-	if err != nil {
-		logrus.Warnf("compaction: l0 filter not exist: %d.fza", t1.ID())
-	}
-	t1.close()
-	util.RemoveTable(l.absPath, t1.ID())
-	l.metadata.deleteL0Table(t1.ID())
-	logrus.Infof("compaction: l0 file has been deleted %d.fza", t1.ID())
-
-	err = l.l0Maintainer.delTable(t2.ID())
-	if err != nil {
-		logrus.Warnf("compaction: l0 filter not exist: %d.fza", t1.ID())
-	}
-	t2.close()
-	util.RemoveTable(l.absPath, t2.ID())
-	l.metadata.deleteL0Table(t2.ID())
-	logrus.Infof("comapction: l0 file has been deleted %d.fza", t2.ID())
-}
-
 func (l *lsm) runCompaction(closer *y.Closer) {
 loop:
 	for {
@@ -256,7 +230,16 @@ loop:
 			if l0Len >= l.setting.L0Capacity {
 				// if there is no file on the level 1, just push two level 0 tables to level1
 				if l.metadata.l1Len() == 0 {
-					l.compactL0()
+					l.metadata.sortL0()
+					l.metadata.mutex.Lock()
+					t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
+					l.metadata.mutex.Unlock()
+					l.l0Maintainer.compress(t1, t2)
+					l.l1Maintainer.persistence(t1, l.absPath, l.metadata.nextFileID())
+					l.l1Maintainer.addTable(t1, t1.index)
+					l.l0Maintainer.delTable(t1.index)
+					l.l0Maintainer.delTable(t2.index)
+
 				}
 				// level 1 files already exist so find union set to push
 				// if overlapping range then append accordingly otherwise just push down
@@ -310,8 +293,8 @@ loop:
 						mergers[1].add(kl, vl, key, val, hash)
 						continue
 					}
-					l.saveL1Table(mergers[0].finish())
-					l.saveL1Table(mergers[1].finish())
+					l.saveL1Table(mergers[0].setTableInfo())
+					l.saveL1Table(mergers[1].setTableInfo())
 					l.l1Maintainer.delTable(l1f.Index)
 					l.metadata.deleteL1Table(l1f.Index)
 					logrus.Infof("load balancing: l1 file %d is splitted into two l1 files properly", l1f.Index)

@@ -14,18 +14,18 @@ type Conf struct {
 }
 
 func LoadConfigure() Conf {
-	c := Conf{}
+	C := Conf{}
 	data, err := ioutil.ReadFile("./conf.yml")
 	if err != nil {
 		logrus.Fatalf("open configure file error: %v", err)
 	}
-	err = yaml.Unmarshal(data, &c)
+	err = yaml.Unmarshal(data, &C)
 	if err != nil {
 		logrus.Fatalf("parse configure file error: %v", err)
 	}
-	c.MemoryTableSize <<= 20
-	c.L1TableSize <<= 20
-	return c
+	C.MemoryTableSize <<= 20
+	C.L1TableSize <<= 20
+	return C
 	//return Conf{
 	//	L0Capacity:      3,
 	//	MemoryTableSize: 64 << 20, // 64MB

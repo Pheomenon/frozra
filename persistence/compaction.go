@@ -71,10 +71,10 @@ func (l *lsm) overlapping(cs compactionStrategy, l0f tableMetadata) {
 		}
 	}
 	for _, builder := range mergers {
-		l.saveL1Table(builder.finish())
+		l.saveL1Table(builder.setTableInfo())
 	}
 	if extraBuilder != nil {
-		l.saveL1Table(extraBuilder.finish())
+		l.saveL1Table(extraBuilder.setTableInfo())
 	}
 	for _, idx := range cs.tableIDs {
 		l.l1Maintainer.delTable(idx)
