@@ -26,13 +26,13 @@ type pair struct {
 	v []byte
 }
 
-func newRocksdbCache() *rocksdbCache {
+func newRocksdbCache(ttl int) *rocksdbCache {
 	//set RocksDB's options
 	options := C.rocksdb_options_create()
 	C.rocksdb_options_increase_parallelism(options, C.int(runtime.NumCPU()))
 	C.rocksdb_options_set_create_if_missing(options, 1)
 	var e *C.char
-	db := C.rocksdb_open(options, C.CString("/mnt/rocksdb"), &e)
+	db := C.rocksdb_open_with_ttl(options, C.CString("/mnt/rocksdb"), C.int(ttl), &e)
 	if e != nil {
 		panic(C.GoString(e))
 	}
