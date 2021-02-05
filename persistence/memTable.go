@@ -173,20 +173,12 @@ func (h *hashMap) persistence(path string, index uint32) {
 		logrus.Fatalf("persistence: can't save data to disk: %v", err)
 	}
 	slots := h.Len()
-
-	// encode this table's info
-	// TODO: this unnecessary to add filter to l0 file it should be maintained by l0 maintainer
-
 	fib := make([]byte, 32)
-	//
-	//filterJson := filter.JSONMarshal()
-	//
 	fi := &fileInfo{
 		metaOffset: content.Len(),
 		entries:    slots,
 		minRange:   h.minRange,
 		maxRange:   h.maxRange,
-		//filterSize: len(filterJson),
 	}
 	fi.Encode(fib)
 
@@ -198,7 +190,6 @@ func (h *hashMap) persistence(path string, index uint32) {
 		panic("unable to encode concurrent map")
 	}
 	fp.Write(metaBuf.Bytes())
-	//fp.Write(filterJson)
 	fp.Write(fib)
 }
 
@@ -219,7 +210,6 @@ func (fi *fileInfo) Decode(buf []byte) {
 	fi.entries = int(binary.BigEndian.Uint32(buf[4:8]))
 	fi.minRange = binary.BigEndian.Uint32(buf[8:16])
 	fi.maxRange = binary.BigEndian.Uint32(buf[16:24])
-	//fi.filterSize = int(binary.BigEndian.Uint32(buf[24:32]))
 }
 
 func (fi *fileInfo) Encode(buf []byte) {
@@ -227,5 +217,4 @@ func (fi *fileInfo) Encode(buf []byte) {
 	binary.BigEndian.PutUint32(buf[4:8], uint32(fi.entries))
 	binary.BigEndian.PutUint32(buf[8:16], fi.minRange)
 	binary.BigEndian.PutUint32(buf[16:24], fi.maxRange)
-	//binary.BigEndian.PutUint32(buf[24:32], uint32(fi.filterSize))
 }
