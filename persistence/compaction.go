@@ -11,7 +11,7 @@ func (l *lsm) notUnion(l0f tableMetadata) {
 	l.l1Maintainer.addTable(newTable, l0f.Index)
 	l.l0Maintainer.delTable(l0f.Index)
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), l0f.Index)
-	l.metadata.deleteL0Table(l0f.Index)
+	l.metadata.delL0File(l0f.Index)
 	logrus.Info("compaction: NOT UNION found so simply pushing the l0 file to l1")
 }
 
@@ -21,12 +21,12 @@ func (l *lsm) union(cs compactionStrategy, l0f tableMetadata) {
 	logrus.Infof("compaction: UNION SET found, merge l0 %d.fza minimum checksum: %d maximum checksum: %d with l1 %d.fza minimum checksum: %d maximum checksum: %d then pushed to l1", t1.ID(), t1.fileInfo.minRange, t1.fileInfo.maxRange, t2.ID(), t2.fileInfo.minRange, t2.fileInfo.maxRange)
 	t1.close()
 	l.l0Maintainer.delTable(t1.ID())
-	l.metadata.deleteL0Table(t1.ID())
+	l.metadata.delL0File(t1.ID())
 	util.RemoveTable(l.absPath, t1.ID())
 	logrus.Infof("compaction: l0 file has been deleted %d", t1.ID())
 	t2.close()
 	l.l1Maintainer.delTable(t2.ID())
-	l.metadata.deleteL1Table(t2.ID())
+	l.metadata.delL1File(t2.ID())
 	util.RemoveTable(l.absPath, t2.ID())
 	logrus.Infof("compaction: l1 file has been deleted %d", t2.ID())
 }
@@ -79,9 +79,9 @@ func (l *lsm) overlapping(cs compactionStrategy, l0f tableMetadata) {
 	for _, idx := range cs.tableIDs {
 		l.l1Maintainer.delTable(idx)
 		util.RemoveTable(l.absPath, idx)
-		l.metadata.deleteL1Table(idx)
+		l.metadata.delL1File(idx)
 	}
 	l.l0Maintainer.delTable(l0f.Index)
 	util.RemoveTable(l.absPath, l0f.Index)
-	l.metadata.deleteL0Table(l0f.Index)
+	l.metadata.delL0File(l0f.Index)
 }

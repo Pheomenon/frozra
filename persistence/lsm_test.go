@@ -170,7 +170,7 @@ func TestCompaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
-	produceEntry(l, 300, 400)
+	produceEntry(l, 200, 300)
 	l.Close()
 	l, err = New(setting)
 	if err != nil {

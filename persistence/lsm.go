@@ -239,24 +239,28 @@ loop:
 					l.l1Maintainer.addTable(t1, t1.index)
 					l.l0Maintainer.delTable(t1.index)
 					l.l0Maintainer.delTable(t2.index)
-
-				}
-				// level 1 files already exist so find union set to push
-				// if overlapping range then append accordingly otherwise just push down
-				l0fs := l.metadata.copyL0()
-				logrus.Infof("%+v", l.metadata)
-				for _, l0f := range l0fs {
-					compactStrategy := l.metadata.l1Status(l0f)
-					if compactStrategy.strategy == NOTUNION {
-						l.notUnion(l0f)
-						continue
-					}
-					if compactStrategy.strategy == UNION {
-						l.union(compactStrategy, l0f)
-						continue
-					}
-					if compactStrategy.strategy == OVERLAPPING {
-						l.overlapping(compactStrategy, l0f)
+					l.metadata.delL0File(l.metadata.L0Files[0].Index)
+					l.metadata.delL0File(l.metadata.L0Files[1].Index)
+					l.metadata.addL1File(uint32(t1.fileInfo.entries), t1.fileInfo.minRange, t1.fileInfo.maxRange, int(t1.size), l.metadata.NextIndex)
+				} else {
+					// level 1 files already exist so find union set to push
+					// if overlapping range then append accordingly otherwise just push down
+					l0fs := l.metadata.copyL0()
+					logrus.Infof("%+v", l.metadata.L0Files)
+					logrus.Infof("%+v", l.metadata.L1Files)
+					for _, l0f := range l0fs {
+						compactStrategy := l.metadata.l1Status(l0f)
+						if compactStrategy.strategy == NOTUNION {
+							l.notUnion(l0f)
+							continue
+						}
+						if compactStrategy.strategy == UNION {
+							l.union(compactStrategy, l0f)
+							continue
+						}
+						if compactStrategy.strategy == OVERLAPPING {
+							l.overlapping(compactStrategy, l0f)
+						}
 					}
 				}
 			}
@@ -296,7 +300,7 @@ loop:
 					l.saveL1Table(mergers[0].setTableInfo())
 					l.saveL1Table(mergers[1].setTableInfo())
 					l.l1Maintainer.delTable(l1f.Index)
-					l.metadata.deleteL1Table(l1f.Index)
+					l.metadata.delL1File(l1f.Index)
 					logrus.Infof("load balancing: l1 file %d is splitted into two l1 files properly", l1f.Index)
 				}
 			}

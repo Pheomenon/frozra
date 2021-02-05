@@ -121,6 +121,30 @@ func (m *metadata) addL1File(records, minRange, maxRange uint32, size int, index
 	})
 }
 
+func (m *metadata) delL0File(index uint32) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	for i := 0; i < len(m.L0Files); i++ {
+		if m.L0Files[i].Index == index {
+			m.L0Files[i] = m.L0Files[len(m.L0Files)-1]
+			m.L0Files = m.L0Files[:len(m.L0Files)-1]
+			break
+		}
+	}
+}
+
+func (m *metadata) delL1File(index uint32) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	for i := 0; i < len(m.L1Files); i++ {
+		if m.L1Files[i].Index == index {
+			m.L1Files[i] = m.L1Files[len(m.L1Files)-1]
+			m.L1Files = m.L1Files[:len(m.L1Files)-1]
+			break
+		}
+	}
+}
+
 func (m *metadata) l0Len() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -137,30 +161,6 @@ func (m *metadata) sortL0() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	sort.Sort(descendingList(m.L0Files))
-}
-
-func (m *metadata) deleteL0Table(index uint32) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	for i := 0; i < len(m.L0Files); i++ {
-		if m.L0Files[i].Index == index {
-			m.L0Files[i] = m.L0Files[len(m.L0Files)-1]
-			m.L0Files = m.L0Files[:len(m.L0Files)-1]
-			break
-		}
-	}
-}
-
-func (m *metadata) deleteL1Table(index uint32) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	for i := 0; i < len(m.L1Files); i++ {
-		if m.L1Files[i].Index == index {
-			m.L1Files[i] = m.L1Files[len(m.L1Files)-1]
-			m.L1Files = m.L1Files[:len(m.L1Files)-1]
-			break
-		}
-	}
 }
 
 func (m *metadata) copyL0() []tableMetadata {
