@@ -2,9 +2,9 @@ package cache
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
-	"unsafe"
 	"xonlab.com/frozra/v1/conf"
 )
 
@@ -108,7 +108,7 @@ func newInMemoryCache(ttl int) *inMemoryCache {
 		go c.expirer()
 	}
 	configure := conf.LoadConfigure()
-	go monit(configure.MemorySize, c)
+	go monit(configure.MemoryThreshold, c)
 	return c
 }
 
@@ -117,21 +117,21 @@ type monitor struct {
 	cachePtr   *inMemoryCache
 }
 
-func monit(memorySize uint64, cachePtr *inMemoryCache) {
+func monit(memorySize uint64, cache *inMemoryCache) {
 	m := &monitor{
 		memorySize: memorySize,
-		cachePtr:   cachePtr,
+		cachePtr:   cache,
 	}
+	stats := &runtime.MemStats{}
 	for {
-		size := unsafe.Sizeof(m.cachePtr)
-		size >>= 10
-		fmt.Printf("%v Byte", uint64(size))
-		if uint64(size) > m.memorySize {
-			cachePtr.isFull = true
+		runtime.ReadMemStats(stats)
+		fmt.Printf("%v Byte\n", stats.HeapAlloc)
+		if stats.HeapAlloc>>30 > m.memorySize {
+			cache.isFull = true
 		} else {
-			cachePtr.isFull = false
+			cache.isFull = false
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Minute * 3)
 	}
 }
 
