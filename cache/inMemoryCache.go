@@ -1,20 +1,29 @@
 package cache
 
 import (
+	"fmt"
 	"sync"
 	"time"
+	"unsafe"
+	"xonlab.com/frozra/v1/conf"
 )
 
 type inMemoryCache struct {
-	c     map[string]value
-	mutex sync.RWMutex
+	c map[string]value
 	Stat
-	ttl time.Duration
+	isFull bool
+	ttl    time.Duration
+	mutex  sync.RWMutex
 }
 
 type value struct {
 	v       []byte
 	created time.Time // the time of the last call to set
+}
+
+type pair struct {
+	k string
+	v []byte
 }
 
 func (c *inMemoryCache) Set(k string, v []byte) error {
@@ -76,13 +85,13 @@ func (c *inMemoryCache) NewScanner() Scanner {
 func (c *inMemoryCache) expirer() {
 	for {
 		time.Sleep(c.ttl)
-		c.mutex.RUnlock()
+		c.mutex.RLock()
 		for k, v := range c.c {
 			c.mutex.RUnlock()
 			if v.created.Add(c.ttl).Before(time.Now()) {
 				c.Del(k)
 			}
-			c.mutex.RUnlock()
+			c.mutex.RLock()
 		}
 		c.mutex.RUnlock()
 	}
@@ -93,11 +102,37 @@ func newInMemoryCache(ttl int) *inMemoryCache {
 		c:     make(map[string]value),
 		mutex: sync.RWMutex{},
 		Stat:  Stat{},
+		ttl:   time.Duration(ttl) * time.Second,
 	}
 	if ttl > 0 {
 		go c.expirer()
 	}
+	configure := conf.LoadConfigure()
+	go monit(configure.MemorySize, c)
 	return c
+}
+
+type monitor struct {
+	memorySize uint64
+	cachePtr   *inMemoryCache
+}
+
+func monit(memorySize uint64, cachePtr *inMemoryCache) {
+	m := &monitor{
+		memorySize: memorySize,
+		cachePtr:   cachePtr,
+	}
+	for {
+		size := unsafe.Sizeof(m.cachePtr)
+		size >>= 10
+		fmt.Printf("%v Byte", uint64(size))
+		if uint64(size) > m.memorySize {
+			cachePtr.isFull = true
+		} else {
+			cachePtr.isFull = false
+		}
+		time.Sleep(time.Second)
+	}
 }
 
 type inMemoryScanner struct {
