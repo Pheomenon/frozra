@@ -49,7 +49,7 @@ func (lm1 *level1Maintainer) get(key []byte) ([]byte, bool) {
 	hash := util.Hashing(key)
 	target := lm1.indexer.floor(hash)
 	table := readTable("./", target.fd)
-	defer table.release()
+	//defer table.release()
 	return lm1.searchKey(table, hash)
 }
 

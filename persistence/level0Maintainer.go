@@ -46,7 +46,7 @@ func (lm0 *level0Maintainer) addTable(h *hashMap, fd uint32) {
 func (lm0 *level0Maintainer) get(key []byte, absPath string) ([]byte, bool) {
 	var value []byte
 	c := crc32.New(CrcTable)
-	c.Write(key)
+	_, _ = c.Write(key)
 	var hash []byte
 	// TODO: need to optimize!
 	hash = append(hash, c.Sum(hash)...)
@@ -66,6 +66,8 @@ func (lm0 *level0Maintainer) get(key []byte, absPath string) ([]byte, bool) {
 
 func (lm0 *level0Maintainer) search(key []byte, fd uint32, absPath string) []byte {
 	t0 := readTable(absPath, fd)
+	// TODO: this table's fd should be close but when it close return value will be unreferenced.
+	//defer t0.release()
 	hash := util.Hashing(key)
 	if position, ok := t0.offsetMap[hash]; ok {
 		keyLength := binary.BigEndian.Uint32(t0.data[position : position+4])
