@@ -2,17 +2,17 @@ package cache
 
 import "log"
 
-func New(typ string, ttl int) Cache {
+func New(ttl int) Cache {
 	var c Cache
-	if typ == "inmemory" {
-		c = newInMemoryCache(ttl)
-	}
-	if typ == "rocksdb" {
-		c = newRocksdbCache(ttl)
-	}
-	if c == nil {
-		panic("Unknown cache type " + typ)
-	}
-	log.Println(typ, "ready to serve")
+	//if typ == "inmemory" {
+	c = newInMemoryCache(ttl)
+	//}
+	//if typ == "rocksdb" {
+	//	c = newRocksdbCache(ttl)
+	//}
+	//if c == nil {
+	//	panic("Unknown cache type " + typ)
+	//}
+	log.Println("frozra ready to serve!")
 	return c
 }
