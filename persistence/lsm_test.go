@@ -12,13 +12,13 @@ import (
 func TestLSM(t *testing.T) {
 	clean()
 	setting := conf.LoadConfigure()
-	l, err := New(setting)
+	l, err := New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	l.Set([]byte("hello"), []byte("phenom"))
 	l.Close()
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
@@ -62,7 +62,7 @@ func TestClean(t *testing.T) {
 func TestConcurrent(t *testing.T) {
 	clean()
 	setting := conf.LoadConfigure()
-	l, err := New(setting)
+	l, err := New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
@@ -87,7 +87,7 @@ func TestConcurrent(t *testing.T) {
 	wg.Wait()
 	l.Close()
 	wg.Add(1)
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("db is expected to open but got error %s", err.Error())
 	}
@@ -102,7 +102,7 @@ func TestConcurrent(t *testing.T) {
 	wg.Wait()
 	l.Close()
 	wg = sync.WaitGroup{}
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	wg.Add(1)
 	wg.Add(1)
 	wg.Add(1)
@@ -155,31 +155,31 @@ func TestConcurrent(t *testing.T) {
 func TestCompaction(t *testing.T) {
 	clean()
 	setting := conf.LoadConfigure()
-	l, err := New(setting)
+	l, err := New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	produceEntry(l, 0, 100)
 	l.Close()
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	produceEntry(l, 100, 200)
 	l.Close()
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	produceEntry(l, 200, 300)
 	l.Close()
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
 	produceEntry(l, 50, 200)
 	l.Close()
-	l, err = New(setting)
+	l, err = New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
@@ -210,7 +210,7 @@ func TestDuplicateKey(t *testing.T) {
 
 func initLSM(t *testing.T) *lsm {
 	setting := conf.LoadConfigure()
-	l, err := New(setting)
+	l, err := New(setting.Persistence)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
@@ -310,7 +310,7 @@ go tool pprof -svg cpu.out > cpu.svg
 func BenchmarkLsm_Set(b *testing.B) {
 	clean()
 	setting := conf.LoadConfigure()
-	l, _ := New(setting)
+	l, _ := New(setting.Persistence)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		l.Set([]byte(fmt.Sprintf("key %d", i)), []byte(fmt.Sprintf("%d", b.N)))

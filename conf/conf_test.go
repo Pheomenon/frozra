@@ -9,10 +9,10 @@ import (
 
 func TestConf(t *testing.T) {
 	type Conf struct {
-		L0Capacity     int    `yaml:"l0Capacity"`
-		MemTableSize   string `yaml:"MemoryTableSize"`
-		Path           string `yaml:"Path"`
-		MaxL1TableSize string `yaml:"maxL1TableSize"`
+		L0Capacity      int    `yaml:"l0Capacity"`
+		MemoryTableSize int    `yaml:"memoryTableSize"`
+		L1TableSize     int    `yaml:"l1TableSize"`
+		Path            string `yaml:"path"`
 	}
 	c := Conf{}
 	data, _ := ioutil.ReadFile("./conf.yml")
@@ -20,10 +20,10 @@ func TestConf(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("--- t:\n%#v\n\n", c)
+	fmt.Printf("--- t:\n%v\n\n", c)
 }
 
 func TestLoadConfigure(t *testing.T) {
 	conf := LoadConfigure()
-	fmt.Printf("%#v", conf)
+	fmt.Printf("--- t:\n%v\n\n", conf)
 }

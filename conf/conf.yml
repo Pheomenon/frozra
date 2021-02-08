@@ -1,4 +1,7 @@
-l0Capacity: 3
-memoryTableSize: 64
-path: ./
-l1TableSize: 128
+inmemory:
+  memoryThreshold: 1
+persistence:
+  l0Capacity: 3
+  memoryTableSize: 64
+  path: ./
+  l1TableSize: 128

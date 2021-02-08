@@ -6,11 +6,20 @@ import (
 	"io/ioutil"
 )
 
-type Conf struct {
+type Persistence struct {
 	L0Capacity      int    `yaml:"l0Capacity"`
 	MemoryTableSize int    `yaml:"memoryTableSize"`
-	Path            string `yaml:"path"`
 	L1TableSize     int    `yaml:"l1TableSize"`
+	Path            string `yaml:"path"`
+}
+
+type Inmemory struct {
+	MemoryThreshold uint64 `yaml:"memoryThreshold"`
+}
+
+type Conf struct {
+	Inmemory
+	Persistence
 }
 
 func LoadConfigure() Conf {
@@ -26,10 +35,4 @@ func LoadConfigure() Conf {
 	C.MemoryTableSize <<= 20
 	C.L1TableSize <<= 20
 	return C
-	//return Conf{
-	//	L0Capacity:      3,
-	//	MemoryTableSize: 64 << 20, // 64MB
-	//	Path:            "./",
-	//	L1TableSize:     64 << 21,
-	//}
 }
