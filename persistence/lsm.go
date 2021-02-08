@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"xonlab.com/frozra/v1/conf"
 	"xonlab.com/frozra/v1/persistence/util"
 )
 
@@ -17,7 +18,7 @@ type request struct {
 }
 
 type lsm struct {
-	setting           Conf
+	setting           conf.Conf
 	writeChan         chan *request
 	l0Maintainer      *level0Maintainer
 	l1Maintainer      *level1Maintainer
@@ -33,7 +34,7 @@ type lsm struct {
 	sync.RWMutex
 }
 
-func New(setting Conf) (*lsm, error) {
+func New(setting conf.Conf) (*lsm, error) {
 	absPath, err := filepath.Abs(setting.Path)
 	if err != nil {
 		return nil, err

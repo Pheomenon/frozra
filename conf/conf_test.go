@@ -1,4 +1,4 @@
-package persistence
+package conf
 
 import (
 	"fmt"
@@ -21,4 +21,9 @@ func TestConf(t *testing.T) {
 		panic(err)
 	}
 	fmt.Printf("--- t:\n%#v\n\n", c)
+}
+
+func TestLoadConfigure(t *testing.T) {
+	conf := LoadConfigure()
+	fmt.Printf("%#v", conf)
 }

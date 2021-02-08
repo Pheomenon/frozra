@@ -6,11 +6,12 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"xonlab.com/frozra/v1/conf"
 )
 
 func TestLSM(t *testing.T) {
 	clean()
-	setting := LoadConfigure()
+	setting := conf.LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -60,7 +61,7 @@ func TestClean(t *testing.T) {
 
 func TestConcurrent(t *testing.T) {
 	clean()
-	setting := LoadConfigure()
+	setting := conf.LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -153,7 +154,7 @@ func TestConcurrent(t *testing.T) {
 
 func TestCompaction(t *testing.T) {
 	clean()
-	setting := LoadConfigure()
+	setting := conf.LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -182,7 +183,7 @@ func TestCompaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
 	}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 300; i++ {
 		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
 		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
 			t.Fatalf("lsm get a unexpected value %s", val)
@@ -208,7 +209,7 @@ func TestDuplicateKey(t *testing.T) {
 }
 
 func initLSM(t *testing.T) *lsm {
-	setting := LoadConfigure()
+	setting := conf.LoadConfigure()
 	l, err := New(setting)
 	if err != nil {
 		t.Fatalf("lsm is expected to open but got error %s", err.Error())
@@ -285,10 +286,10 @@ func TestLsm_GetInL1(t *testing.T) {
 func TestLsm_Mixed(t *testing.T) {
 	clean()
 	l := initLSM(t)
-	produceEntry(l, 0, 1<<8)
+	produceEntry(l, 0, 1<<16)
 	l.Close()
 	l = initLSM(t)
-	for i := 0; i <= 1<<8; i++ {
+	for i := 0; i <= 1<<16; i++ {
 		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
 		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
 			t.Fatalf("lsm get a unexpected value %s", val)
@@ -308,7 +309,7 @@ go tool pprof -svg cpu.out > cpu.svg
 */
 func BenchmarkLsm_Set(b *testing.B) {
 	clean()
-	setting := LoadConfigure()
+	setting := conf.LoadConfigure()
 	l, _ := New(setting)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
