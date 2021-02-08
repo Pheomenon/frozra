@@ -6,7 +6,7 @@ import (
 	"xonlab.com/frozra/v1/persistence/util"
 )
 
-func (l *lsm) notUnion(l0f tableMetadata) {
+func (l *Lsm) notUnion(l0f tableMetadata) {
 	newTable := readTable(l.absPath, l0f.Index)
 	l.l1Maintainer.addTable(newTable, l0f.Index)
 	l.l0Maintainer.delTable(l0f.Index)
@@ -15,7 +15,7 @@ func (l *lsm) notUnion(l0f tableMetadata) {
 	logrus.Info("compaction: NOT UNION found so simply pushing the l0 file to l1")
 }
 
-func (l *lsm) union(cs compactionStrategy, l0f tableMetadata) {
+func (l *Lsm) union(cs compactionStrategy, l0f tableMetadata) {
 	t1, t2 := readTable(l.absPath, l0f.Index), readTable(l.absPath, cs.tableIDs[0])
 	l.merge(t1, t2)
 	logrus.Infof("compaction: UNION SET found, merge l0 %d.fza minimum checksum: %d maximum checksum: %d with l1 %d.fza minimum checksum: %d maximum checksum: %d then pushed to l1", t1.ID(), t1.fileInfo.minRange, t1.fileInfo.maxRange, t2.ID(), t2.fileInfo.minRange, t2.fileInfo.maxRange)
@@ -32,7 +32,7 @@ func (l *lsm) union(cs compactionStrategy, l0f tableMetadata) {
 }
 
 //TODO: need to optimize!
-func (l *lsm) overlapping(cs compactionStrategy, l0f tableMetadata) {
+func (l *Lsm) overlapping(cs compactionStrategy, l0f tableMetadata) {
 	logrus.Infof("compaction: OVERLAPPING found")
 	mergers := []*tableMerger{}
 	// if the the value is not in the range, we'll create a new file and append everything in it
@@ -40,11 +40,11 @@ func (l *lsm) overlapping(cs compactionStrategy, l0f tableMetadata) {
 	for _, idx := range cs.tableIDs {
 		t := readTable(l.absPath, idx)
 		t.SeekBegin()
-		builder := newTableMerger(int(t.size))
+		merger := newTableMerger(int(t.size))
 		// mergers will load all l1 file to memory ......
-		builder.append(t.fp, int64(t.fileInfo.metaOffset))
-		builder.merge(t.offsetMap, 0)
-		mergers = append(mergers, builder)
+		merger.append(t.fp, int64(t.fileInfo.metaOffset))
+		merger.merge(t.offsetMap, 0)
+		mergers = append(mergers, merger)
 	}
 	toCompacT := readTable(l.absPath, l0f.Index)
 	iter := toCompacT.iter()

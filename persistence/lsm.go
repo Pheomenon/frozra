@@ -17,7 +17,7 @@ type request struct {
 	wg    sync.WaitGroup
 }
 
-type lsm struct {
+type Lsm struct {
 	setting           conf.Persistence
 	writeChan         chan *request
 	l0Maintainer      *level0Maintainer
@@ -34,7 +34,7 @@ type lsm struct {
 	sync.RWMutex
 }
 
-func New(setting conf.Persistence) (*lsm, error) {
+func New(setting conf.Persistence) (*Lsm, error) {
 	absPath, err := filepath.Abs(setting.Path)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func New(setting conf.Persistence) (*lsm, error) {
 		t.release()
 	}
 
-	lsm := &lsm{
+	lsm := &Lsm{
 		setting:           setting,
 		writeChan:         make(chan *request, 1024),
 		absPath:           absPath,
@@ -75,7 +75,7 @@ func New(setting conf.Persistence) (*lsm, error) {
 	return lsm, nil
 }
 
-func (l *lsm) Set(key, val []byte) {
+func (l *Lsm) Set(key, val []byte) {
 	r := request{
 		key:   key,
 		value: val,
@@ -85,7 +85,7 @@ func (l *lsm) Set(key, val []byte) {
 	r.wg.Wait()
 }
 
-func (l *lsm) acceptWrite(closer *y.Closer) {
+func (l *Lsm) acceptWrite(closer *y.Closer) {
 loop:
 	for {
 		select {
@@ -102,8 +102,8 @@ loop:
 	closer.Done()
 }
 
-func (l *lsm) write(req *request) {
-	// len(req.key) + len(req.value) + 8 is the total occupied of an entry in lsm's buf
+func (l *Lsm) write(req *request) {
+	// len(req.key) + len(req.value) + 8 is the total occupied of an entry in Lsm's buf
 	if !l.memoryTable.isEnoughSpace(len(req.key) + len(req.value) + 8) {
 		l.Lock()
 		l.swap = l.memoryTable
@@ -115,7 +115,7 @@ func (l *lsm) write(req *request) {
 	req.wg.Done()
 }
 
-func (l *lsm) listeningForFlush(closer *y.Closer) {
+func (l *Lsm) listeningForFlush(closer *y.Closer) {
 loop:
 	for {
 		select {
@@ -132,7 +132,7 @@ loop:
 	closer.Done()
 }
 
-func (l *lsm) Get(key []byte) ([]byte, bool) {
+func (l *Lsm) Get(key []byte) ([]byte, bool) {
 	val, exist := l.memoryTable.Get(key)
 	if exist {
 		return val, exist
@@ -152,7 +152,7 @@ func (l *lsm) Get(key []byte) ([]byte, bool) {
 }
 
 // Close save all data and metadata form memory to disk
-func (l *lsm) Close() {
+func (l *Lsm) Close() {
 	l.loadBalanceCloser.SignalAndWait()
 	l.compactCloser.SignalAndWait()
 	l.writeCloser.SignalAndWait()
@@ -170,7 +170,7 @@ func (l *lsm) Close() {
 	}
 }
 
-func (l *lsm) flushMemory(swap *hashMap) {
+func (l *Lsm) flushMemory(swap *hashMap) {
 	nextID := l.metadata.nextFileID()
 	// persist swap to disk
 	swap.persistence(l.absPath, nextID)
@@ -183,7 +183,7 @@ func (l *lsm) flushMemory(swap *hashMap) {
 	l.Unlock()
 }
 
-func (l *lsm) merge(t1, t2 *table) {
+func (l *Lsm) merge(t1, t2 *table) {
 	t1.SeekBegin()
 	t2.SeekBegin()
 	merger := newTableMerger(int(t1.size + t2.size))
@@ -195,7 +195,7 @@ func (l *lsm) merge(t1, t2 *table) {
 	l.saveL1Table(buf)
 }
 
-func (l *lsm) saveL1Table(buf []byte) {
+func (l *Lsm) saveL1Table(buf []byte) {
 	fileID := l.metadata.nextFileID()
 	fp, err := os.Create(util.TablePath(l.absPath, fileID))
 	if err != nil {
@@ -219,7 +219,7 @@ func (l *lsm) saveL1Table(buf []byte) {
 	logrus.Infof("comapction: new l1 file has beed added %d.fza", fileID)
 }
 
-func (l *lsm) runCompaction(closer *y.Closer) {
+func (l *Lsm) runCompaction(closer *y.Closer) {
 loop:
 	for {
 		select {
@@ -270,7 +270,7 @@ loop:
 	closer.Done()
 }
 
-func (l *lsm) loadBalancing(closer *y.Closer) {
+func (l *Lsm) loadBalancing(closer *y.Closer) {
 loop:
 	for {
 		select {
@@ -279,11 +279,12 @@ loop:
 		default:
 			for _, l1f := range l.metadata.copyL1() {
 				if l1f.Size > uint32(l.setting.L1TableSize) {
-					logrus.Infof("load balancing: l1 file %d found which it larger than max l1 size", l1f.Index)
+					logrus.Infof("load balancing: level 1 file %d.fza found which it larger than max l1 file size", l1f.Index)
 					l1t := readTable(l.absPath, l1f.Index)
-					ents := l1t.entries()
-					k := len(ents) / 2
-					median := ents[k]
+					//entries := l1t.entries()
+					//k := len(entries) / 2
+					//median := entries[k]
+					median := (l1t.fileInfo.maxRange - l1t.fileInfo.minRange) / 2
 					mergers := []*tableMerger{newTableMerger(int(l1f.Size) / 2), newTableMerger(int(l1f.Size) / 2)}
 					iter := l1t.iter()
 					for iter.hasNext() {
@@ -302,7 +303,7 @@ loop:
 					l.saveL1Table(mergers[1].setTableInfo())
 					l.l1Maintainer.delTable(l1f.Index)
 					l.metadata.delL1File(l1f.Index)
-					logrus.Infof("load balancing: l1 file %d is splitted into two l1 files properly", l1f.Index)
+					logrus.Infof("load balancing: level 1 file %d.fza is splitted into two l1 files properly", l1f.Index)
 				}
 			}
 		}

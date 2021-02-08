@@ -14,7 +14,8 @@ type Persistence struct {
 }
 
 type Inmemory struct {
-	MemoryThreshold uint64 `yaml:"memoryThreshold"`
+	MemoryThreshold int `yaml:"memoryThreshold"`
+	Interval        int `yaml:"interval"`
 }
 
 type Conf struct {

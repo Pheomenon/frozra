@@ -1,11 +1,11 @@
 package cache
 
 import (
-	"fmt"
-	"runtime"
+	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
 	"xonlab.com/frozra/v1/conf"
+	"xonlab.com/frozra/v1/persistence"
 )
 
 type inMemoryCache struct {
@@ -13,6 +13,7 @@ type inMemoryCache struct {
 	Stat
 	isFull bool
 	ttl    time.Duration
+	lsm    *persistence.Lsm
 	mutex  sync.RWMutex
 }
 
@@ -26,14 +27,38 @@ type pair struct {
 	v []byte
 }
 
-func (c *inMemoryCache) Set(k string, v []byte) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	c.c[k] = value{
-		v:       v,
-		created: time.Now(),
+func newInMemoryCache(ttl int) *inMemoryCache {
+	configure := conf.LoadConfigure()
+	lsm, err := persistence.New(configure.Persistence)
+	if err != nil {
+		logrus.Fatalf("init: create lsm error: %v", err)
 	}
-	c.add(k, v)
+	c := &inMemoryCache{
+		c:     make(map[string]value),
+		lsm:   lsm,
+		Stat:  Stat{},
+		ttl:   time.Duration(ttl) * time.Second,
+		mutex: sync.RWMutex{},
+	}
+	if ttl > 0 {
+		go c.expirer()
+	}
+	go monit(configure.MemoryThreshold, configure.Interval, c)
+	return c
+}
+
+func (c *inMemoryCache) Set(k string, v []byte) error {
+	if !c.isFull {
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+		c.c[k] = value{
+			v:       v,
+			created: time.Now(),
+		}
+		c.add(k, v)
+	} else {
+		c.lsm.Set([]byte(k), v)
+	}
 	return nil
 }
 
@@ -97,41 +122,23 @@ func (c *inMemoryCache) expirer() {
 	}
 }
 
-func newInMemoryCache(ttl int) *inMemoryCache {
-	c := &inMemoryCache{
-		c:     make(map[string]value),
-		mutex: sync.RWMutex{},
-		Stat:  Stat{},
-		ttl:   time.Duration(ttl) * time.Second,
-	}
-	if ttl > 0 {
-		go c.expirer()
-	}
-	configure := conf.LoadConfigure()
-	go monit(configure.MemoryThreshold, c)
-	return c
-}
-
 type monitor struct {
-	memorySize uint64
-	cachePtr   *inMemoryCache
+	memoryThreshold int
+	cache           *inMemoryCache
 }
 
-func monit(memorySize uint64, cache *inMemoryCache) {
+func monit(memoryThreshold, interval int, cache *inMemoryCache) {
 	m := &monitor{
-		memorySize: memorySize,
-		cachePtr:   cache,
+		memoryThreshold: memoryThreshold,
+		cache:           cache,
 	}
-	stats := &runtime.MemStats{}
 	for {
-		runtime.ReadMemStats(stats)
-		fmt.Printf("%v Byte\n", stats.HeapAlloc)
-		if stats.HeapAlloc>>30 > m.memorySize {
+		if (cache.Stat.KeySize+cache.Stat.ValueSize)*8>>30 > int64(m.memoryThreshold) {
 			cache.isFull = true
 		} else {
 			cache.isFull = false
 		}
-		time.Sleep(time.Minute * 3)
+		time.Sleep(time.Second * time.Duration(interval))
 	}
 }
 
