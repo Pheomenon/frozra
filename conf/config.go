@@ -1,4 +1,4 @@
-package persistence
+package conf
 
 import (
 	"github.com/sirupsen/logrus"
@@ -9,13 +9,13 @@ import (
 type Conf struct {
 	L0Capacity      int    `yaml:"l0Capacity"`
 	MemoryTableSize int    `yaml:"memoryTableSize"`
-	Path            string `yaml:"Path"`
+	Path            string `yaml:"path"`
 	L1TableSize     int    `yaml:"l1TableSize"`
 }
 
 func LoadConfigure() Conf {
 	C := Conf{}
-	data, err := ioutil.ReadFile("./conf.yml")
+	data, err := ioutil.ReadFile("../conf/conf.yml")
 	if err != nil {
 		logrus.Fatalf("open configure file error: %v", err)
 	}
