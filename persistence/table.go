@@ -13,14 +13,13 @@ import (
 )
 
 type table struct {
-	data     []byte
-	path     string
-	fileInfo *fileInfo
-	size     int64
-	fp       *os.File
-	dataRef  []byte
-	status   os.FileInfo
-	//filter    *bbloom.Bloom
+	data      []byte
+	path      string
+	fileInfo  *fileInfo
+	size      int64
+	fp        *os.File
+	dataRef   []byte // file reference provided by mmap
+	status    os.FileInfo
 	offsetMap map[uint32]uint32
 	index     uint32
 	sync.RWMutex
@@ -58,6 +57,7 @@ func readTable(path string, index uint32) *table {
 		data:      dataRef[0:fi.metaOffset], // this field stored table's content
 		path:      path,
 		fileInfo:  fi,
+		dataRef:   dataRef,
 		size:      status.Size(),
 		fp:        fp,
 		status:    status,
@@ -65,30 +65,6 @@ func readTable(path string, index uint32) *table {
 		index:     index,
 	}
 }
-
-//
-//func (t *table) Get(key []byte) ([]byte, bool) {
-//	hash := util.Hashing(key)
-//	if !t.exist(hash) {
-//		return nil, false
-//	}
-//	position, ok := t.offsetMap[hash]
-//	if !ok {
-//		return nil, false
-//	}
-//	keyLength := binary.BigEndian.Uint32(t.data[position : position+4])
-//	position += 4
-//	valLength := binary.BigEndian.Uint32(t.data[position : position+4])
-//	position += 4
-//	position += keyLength
-//	return t.data[position : position+valLength], true
-//}
-
-//func (t *table) exist(hash uint32) bool {
-//	buf := make([]byte, 4)
-//	binary.BigEndian.PutUint32(buf, hash)
-//	return t.filter.Has(buf)
-//}
 
 func (t *table) SeekBegin() {
 	t.fp.Seek(0, io.SeekStart)
@@ -115,7 +91,7 @@ func (t *table) entries() []uint32 {
 }
 
 func (t *table) release() {
-	if syscall.Munmap(t.dataRef) == nil {
+	if syscall.Munmap(t.dataRef) != nil {
 		logrus.Warnf("failed to munmap")
 	}
 	t = nil
