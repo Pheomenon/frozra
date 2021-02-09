@@ -286,15 +286,15 @@ func TestLsm_GetInL1(t *testing.T) {
 func TestLsm_Mixed(t *testing.T) {
 	clean()
 	l := initLSM(t)
-	produceEntry(l, 0, 1<<28)
+	produceEntry(l, 0, 1<<20)
 	l.Close()
-	//l = initLSM(t)
-	//for i := 0; i <= 1<<16; i++ {
-	//	val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
-	//	if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
-	//		t.Fatalf("Lsm get a unexpected value %s", val)
-	//	}
-	//}
+	l = initLSM(t)
+	for i := 0; i <= 1<<20; i++ {
+		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
+		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
+			t.Fatalf("Lsm get a unexpected value %s", val)
+		}
+	}
 }
 
 /*
@@ -314,5 +314,16 @@ func BenchmarkLsm_Set(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		l.Set([]byte(fmt.Sprintf("key %d", i)), []byte(fmt.Sprintf("%d", b.N)))
+	}
+}
+
+func BenchmarkLsm_Get(b *testing.B) {
+	clean()
+	setting := conf.LoadConfigure()
+	l, _ := New(setting.Persistence)
+	produceEntry(l, 0, 1<<16)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		l.Get([]byte(fmt.Sprintf("%d", b.N)))
 	}
 }

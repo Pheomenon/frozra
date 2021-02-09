@@ -34,7 +34,7 @@ func (lm1 *level1Maintainer) delTable(index uint32) {
 	lm1.Lock()
 	defer lm1.Unlock()
 	lm1.indexer.delete(index)
-	//remove this table in disk
+	// remove this table in disk
 	s := strconv.Itoa(int(index))
 	err := os.Remove(fmt.Sprintf("./%s", s))
 	if err != nil {
@@ -48,9 +48,13 @@ func (lm1 *level1Maintainer) get(key []byte) ([]byte, bool) {
 	defer lm1.RUnlock()
 	hash := util.Hashing(key)
 	target := lm1.indexer.floor(hash)
-	table := readTable("./", target.fd)
-	//defer table.release()
-	return lm1.searchKey(table, hash)
+	if target != nil {
+		table := readTable("./", target.fd)
+		//defer table.release()
+		return lm1.searchKey(table, hash)
+	} else {
+		return nil, false
+	}
 }
 
 func (lm1 *level1Maintainer) searchKey(t *table, hash uint32) ([]byte, bool) {
