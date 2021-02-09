@@ -145,8 +145,8 @@ func (lm0 *level0Maintainer) delTable(fd uint32) {
 	lm0.Unlock()
 }
 
-// compress two tables into one
-func (lm0 *level0Maintainer) compress(t1, t2 *table) *table {
+// compress two tables into one then delete old file in disk
+func (lm0 *level0Maintainer) compress(t1, t2 *table, fd uint32) *table {
 	content := bytes.NewBuffer(t1.data)
 	content.Grow(len(t1.data) + len(t2.data))
 	content.Write(t2.data)
@@ -163,5 +163,6 @@ func (lm0 *level0Maintainer) compress(t1, t2 *table) *table {
 	}
 	t1.fileInfo.metaOffset += t2.fileInfo.metaOffset
 	t1.fileInfo.entries += t2.fileInfo.entries
+	t1.index = fd
 	return t1
 }

@@ -8,7 +8,7 @@ import (
 
 func (l *Lsm) notUnion(l0f tableMetadata) {
 	newTable := readTable(l.absPath, l0f.Index)
-	l.l1Maintainer.addTable(newTable, l0f.Index)
+	l.l1Maintainer.addTable(newTable)
 	l.l0Maintainer.delTable(l0f.Index)
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), l0f.Index)
 	l.metadata.delL0File(l0f.Index)

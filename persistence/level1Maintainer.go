@@ -24,10 +24,10 @@ func newLevel1Maintainer() *level1Maintainer {
 	}
 }
 
-func (lm1 *level1Maintainer) addTable(t *table, index uint32) {
+func (lm1 *level1Maintainer) addTable(t *table) {
 	lm1.Lock()
 	defer lm1.Unlock()
-	lm1.indexer.put(t.fileInfo.minRange, index)
+	lm1.indexer.put(t.fileInfo.minRange, t.index)
 }
 
 func (lm1 *level1Maintainer) delTable(index uint32) {
@@ -66,12 +66,12 @@ func (lm1 *level1Maintainer) searchKey(t *table, hash uint32) ([]byte, bool) {
 	return t.data[position : position+valLength], true
 }
 
-func (lm1 *level1Maintainer) persistence(t *table, path string, index uint32) {
+func (lm1 *level1Maintainer) persistence(t *table, path string) {
 	filePath, err := filepath.Abs(path)
 	if err != nil {
 		panic("persistence in level 1: unable to flushing memory table to disk")
 	}
-	fp, err := os.Create(fmt.Sprintf("%s/%d.fza", filePath, index))
+	fp, err := os.Create(fmt.Sprintf("%s/%d.fza", filePath, t.index))
 	if err != nil {
 		panic(fmt.Sprintf("persistence in level 1: unable to flush memory table, error: %v", err))
 	}

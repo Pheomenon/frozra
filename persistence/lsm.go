@@ -50,7 +50,7 @@ func New(setting conf.Persistence) (*Lsm, error) {
 	l1Maintainer := newLevel1Maintainer()
 	for _, l1File := range metadata.L1Files {
 		t := readTable(absPath, l1File.Index)
-		l1Maintainer.addTable(t, l1File.Index)
+		l1Maintainer.addTable(t)
 		t.release()
 	}
 
@@ -213,7 +213,7 @@ func (l *Lsm) saveL1Table(buf []byte) {
 	// l1 table has been created so have to remove those files from l0
 	// and add it to l1
 	newTable := readTable(l.absPath, fileID)
-	l.l1Maintainer.addTable(newTable, fileID)
+	l.l1Maintainer.addTable(newTable)
 
 	l.metadata.addL1File(uint32(newTable.fileInfo.entries), newTable.fileInfo.minRange, newTable.fileInfo.maxRange, int(newTable.size), fileID)
 	logrus.Infof("comapction: new l1 file has beed added %d.fza", fileID)
@@ -232,17 +232,24 @@ loop:
 				// if there is no file on the level 1, just push two level 0 tables to level1
 				if l.metadata.l1Len() == 0 {
 					l.metadata.sortL0()
-					l.metadata.mutex.Lock()
+					//l.metadata.mutex.Lock()
 					t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
-					l.metadata.mutex.Unlock()
-					l.l0Maintainer.compress(t1, t2)
-					l.l1Maintainer.persistence(t1, l.absPath, l.metadata.nextFileID())
-					l.l1Maintainer.addTable(t1, t1.index)
-					l.l0Maintainer.delTable(t1.index)
-					l.l0Maintainer.delTable(t2.index)
+					t0 := l.l0Maintainer.compress(t1, t2, l.metadata.nextFileID())
+
+					l.l0Maintainer.delTable(l.metadata.L0Files[0].Index)
+					l.l0Maintainer.delTable(l.metadata.L0Files[1].Index)
+
+					util.RemoveTable(l.absPath, l.metadata.L0Files[0].Index)
+					util.RemoveTable(l.absPath, l.metadata.L0Files[1].Index)
+
 					l.metadata.delL0File(l.metadata.L0Files[0].Index)
 					l.metadata.delL0File(l.metadata.L0Files[1].Index)
-					l.metadata.addL1File(uint32(t1.fileInfo.entries), t1.fileInfo.minRange, t1.fileInfo.maxRange, int(t1.size), l.metadata.NextIndex)
+
+					l.l1Maintainer.persistence(t0, l.absPath)
+					l.l1Maintainer.addTable(t0)
+
+					l.metadata.addL1File(uint32(t0.fileInfo.entries), t0.fileInfo.minRange, t0.fileInfo.maxRange, int(t0.size), t0.index)
+					//l.metadata.mutex.Unlock()
 				} else {
 					// level 1 files already exist so find union set to push
 					// if overlapping range then append accordingly otherwise just push down

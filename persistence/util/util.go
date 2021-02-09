@@ -33,11 +33,12 @@ func TablePath(abs string, index uint32) string {
 	return fmt.Sprintf("%s/%d.fza", abs, index)
 }
 
+// RemoveTable remove file in disk
 func RemoveTable(abs string, idx uint32) {
 	tp := TablePath(abs, idx)
 	err := os.Remove(tp)
 	if err != nil {
 		logrus.Errorf("unable to delete the %d table", idx)
 	}
-	logrus.Infof("compaction: remove %d table", idx)
+	logrus.Infof("compaction: remove %d.fza table", idx)
 }

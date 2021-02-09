@@ -286,7 +286,7 @@ func TestLsm_GetInL1(t *testing.T) {
 func TestLsm_Mixed(t *testing.T) {
 	clean()
 	l := initLSM(t)
-	produceEntry(l, 0, 1<<32)
+	produceEntry(l, 0, 1<<28)
 	l.Close()
 	//l = initLSM(t)
 	//for i := 0; i <= 1<<16; i++ {
