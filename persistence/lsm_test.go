@@ -321,9 +321,9 @@ func BenchmarkLsm_Get(b *testing.B) {
 	clean()
 	setting := conf.LoadConfigure()
 	l, _ := New(setting.Persistence)
-	produceEntry(l, 0, 1<<16)
+	produceEntry(l, 0, 1<<22)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		l.Get([]byte(fmt.Sprintf("%d", b.N)))
+		l.Get([]byte(fmt.Sprintf("key %d", b.N)))
 	}
 }

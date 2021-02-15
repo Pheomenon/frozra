@@ -288,9 +288,6 @@ loop:
 				if l1f.Size > uint32(l.setting.L1TableSize) {
 					logrus.Infof("load balancing: level 1 file %d.fza found which it larger than max l1 file size", l1f.Index)
 					l1t := readTable(l.absPath, l1f.Index)
-					//entries := l1t.entries()
-					//k := len(entries) / 2
-					//median := entries[k]
 					median := (l1t.fileInfo.maxRange - l1t.fileInfo.minRange) / 2
 					mergers := []*tableMerger{newTableMerger(int(l1f.Size) / 2), newTableMerger(int(l1f.Size) / 2)}
 					iter := l1t.iter()
