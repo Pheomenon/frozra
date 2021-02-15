@@ -132,7 +132,7 @@ func monit(memoryThreshold, interval int, cache *inMemoryCache) {
 		memoryThreshold: memoryThreshold,
 		cache:           cache,
 	}
-	monitorTicker := time.NewTicker(time.Duration(interval))
+	monitorTicker := time.NewTicker(time.Second * time.Duration(interval))
 	for {
 		select {
 		case <-monitorTicker.C:
