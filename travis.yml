@@ -1,9 +1,0 @@
-language: go
-go: 
-  - "1.15.6"
-script:
-  - go test -v ./...
-os: linux
-branches:
-  only:
-    - master
