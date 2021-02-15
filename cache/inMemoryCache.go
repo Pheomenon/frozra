@@ -132,13 +132,16 @@ func monit(memoryThreshold, interval int, cache *inMemoryCache) {
 		memoryThreshold: memoryThreshold,
 		cache:           cache,
 	}
+	monitorTicker := time.NewTicker(time.Duration(interval))
 	for {
-		if (cache.Stat.KeySize+cache.Stat.ValueSize)*8>>30 > int64(m.memoryThreshold) {
-			cache.isFull = true
-		} else {
-			cache.isFull = false
+		select {
+		case <-monitorTicker.C:
+			if (cache.Stat.KeySize+cache.Stat.ValueSize)*8>>30 > int64(m.memoryThreshold) {
+				cache.isFull = true
+			} else {
+				cache.isFull = false
+			}
 		}
-		time.Sleep(time.Second * time.Duration(interval))
 	}
 }
 
