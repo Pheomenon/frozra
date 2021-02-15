@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 	"xonlab.com/frozra/v1/conf"
 	"xonlab.com/frozra/v1/persistence/util"
 )
@@ -220,12 +221,13 @@ func (l *Lsm) saveL1Table(buf []byte) {
 }
 
 func (l *Lsm) runCompaction(closer *y.Closer) {
+	compactTicker := time.NewTicker(time.Second * 30)
 loop:
 	for {
 		select {
 		case <-closer.HasBeenClosed():
 			break loop
-		default:
+		case <-compactTicker.C:
 			// check for l0Tables
 			l0Len := l.metadata.l0Len()
 			if l0Len >= l.setting.L0Capacity {
@@ -278,12 +280,13 @@ loop:
 }
 
 func (l *Lsm) loadBalancing(closer *y.Closer) {
+	loadBalanceTicker := time.NewTicker(time.Second * 30)
 loop:
 	for {
 		select {
 		case <-closer.HasBeenClosed():
 			break loop
-		default:
+		case <-loadBalanceTicker.C:
 			for _, l1f := range l.metadata.copyL1() {
 				if l1f.Size > uint32(l.setting.L1TableSize) {
 					logrus.Infof("load balancing: level 1 file %d.fza found which it larger than max l1 file size", l1f.Index)
