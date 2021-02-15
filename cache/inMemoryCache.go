@@ -64,6 +64,13 @@ func (c *inMemoryCache) Set(k string, v []byte) error {
 
 func (c *inMemoryCache) Get(k string) ([]byte, error) {
 	c.mutex.RLock()
+	if c.c[k].v == nil {
+		c.mutex.RUnlock()
+		res, exist := c.lsm.Get([]byte(k))
+		if exist {
+			return res, nil
+		}
+	}
 	defer c.mutex.RUnlock()
 	return c.c[k].v, nil
 }

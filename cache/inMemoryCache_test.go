@@ -33,10 +33,3 @@ func produceEntry(m *inMemoryCache, start, end int) {
 		_ = m.Set(fmt.Sprintf("key %s", strconv.Itoa(i)), []byte(fmt.Sprintf("%d", i)))
 	}
 }
-
-func TestInMemoryCache_Set(t *testing.T) {
-	m := newInMemoryCache(60)
-	produceEntry(m, 0, 1<<30)
-
-	produceEntry(m, 1<<16, 1<<17)
-}
