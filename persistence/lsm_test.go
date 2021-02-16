@@ -50,7 +50,7 @@ func clean() {
 }
 
 func produceEntry(l *Lsm, start, end int) {
-	for i := start; i < end; i++ {
+	for i := start; i <= end; i++ {
 		l.Set([]byte(fmt.Sprintf("key %d", i)), []byte(fmt.Sprintf("%d", i)))
 	}
 }
@@ -77,7 +77,7 @@ func TestConcurrent(t *testing.T) {
 		wg.Done()
 	}()
 	go func() {
-		for i := 101; i < 200; i++ {
+		for i := 100; i < 200; i++ {
 			key := []byte("phenom" + string(rune(i)))
 			value := []byte("froza" + string(rune(i)))
 			l.Set(key, value)
@@ -283,19 +283,19 @@ func TestLsm_GetInL1(t *testing.T) {
 	}
 }
 
-func TestLsm_Mixed(t *testing.T) {
-	clean()
-	l := initLSM(t)
-	produceEntry(l, 0, 1<<20)
-	l.Close()
-	l = initLSM(t)
-	for i := 0; i <= 1<<20; i++ {
-		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
-		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
-			t.Fatalf("Lsm get a unexpected value %s", val)
-		}
-	}
-}
+//func TestLsm_Mixed(t *testing.T) {
+//	clean()
+//	l := initLSM(t)
+//	produceEntry(l, 0, 1<<24)
+//	l.Close()
+//	l = initLSM(t)
+//	for i := 0; i <= 1<<24; i++ {
+//		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
+//		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
+//			t.Fatalf("Lsm get a unexpected value %s", val)
+//		}
+//	}
+//}
 
 /*
 go test -bench=. -benchtime=60s -run=none
