@@ -21,6 +21,7 @@ Mem: 32GiB RAM
 OS : Ubuntu-20.04.1 5.8.0-43-generic #49-Ubuntu
 Go : go1.15.x linux/amd64
 ```
+This benchmark script is in `benchmark` directory
 ![get](https://raw.githubusercontent.com/Pheomenon/frozra/master/readme_source/get.png)
 ![set](https://raw.githubusercontent.com/Pheomenon/frozra/master/readme_source/set.png)
 
