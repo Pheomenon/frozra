@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"strings"
 	"time"
-	"xonlab.com/frozra/v1/cache-benchmark/cacheClient"
+	"xonlab.com/frozra/v1/benchmark/cacheClient"
 )
 
 type statistic struct {
