@@ -15,8 +15,8 @@ func main() {
 	clus := flag.String("cluster", "", "cluster address")
 	flag.Parse()
 	log.Println("ttl is", *ttl)
-	log.Println("node is ", *node)
-	log.Println("cluster is ", *clus)
+	log.Println("node is", *node)
+	log.Println("cluster is", *clus)
 	c := cache.New(*ttl)
 	n, e := cluster.New(*node, *clus)
 	if e != nil {

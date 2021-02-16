@@ -278,8 +278,6 @@ func TestLsm_GetInL1(t *testing.T) {
 	val, _ := l.Get([]byte(fmt.Sprintf("key %d", 32)))
 	if !bytes.Equal(val, []byte("32")) {
 		t.Fatalf("Lsm get a unexpected value %s", val)
-	} else {
-		t.Logf("Lsm get a expected value %s", val)
 	}
 }
 

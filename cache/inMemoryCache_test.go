@@ -1,9 +1,11 @@
 package cache
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -32,4 +34,35 @@ func produceEntry(m *inMemoryCache, start, end int) {
 	for i := start; i <= end; i++ {
 		_ = m.Set(fmt.Sprintf("key %s", strconv.Itoa(i)), []byte(fmt.Sprintf("%d", i)))
 	}
+}
+
+func TestInMemoryCache_Get(t *testing.T) {
+	m := newInMemoryCache(30)
+	produceEntry(m, 0, 1<<16)
+	for i := 0; i <= 1<<16; i++ {
+		val, _ := m.Get(fmt.Sprintf("key %s", strconv.Itoa(i)))
+		if !bytes.Equal([]byte(fmt.Sprintf("%d", i)), val) {
+			t.Fatalf("got unexpect value: %s", val)
+		}
+	}
+}
+
+func TestInMemoryCache_Concurrent(t *testing.T) {
+	clean()
+	var wg sync.WaitGroup
+	m := newInMemoryCache(30)
+	produceEntry(m, 0, 1<<22)
+	wg.Add(32)
+	for i := 0; i < 32; i++ {
+		go func() {
+			for j := 0; j <= 1<<22; j++ {
+				val, _ := m.Get(fmt.Sprintf("key %s", strconv.Itoa(j)))
+				if !bytes.Equal([]byte(fmt.Sprintf("%d", j)), val) {
+					t.Fatalf("got unexpect value: %s", val)
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }
