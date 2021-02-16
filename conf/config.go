@@ -25,7 +25,7 @@ type Conf struct {
 
 func LoadConfigure() Conf {
 	C := Conf{}
-	data, err := ioutil.ReadFile("../conf/conf.yml")
+	data, err := ioutil.ReadFile("./conf/conf.yml")
 	if err != nil {
 		logrus.Fatalf("open configure file error: %v", err)
 	}
