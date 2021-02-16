@@ -20,7 +20,7 @@ type level1Maintainer struct {
 
 func newLevel1Maintainer() *level1Maintainer {
 	return &level1Maintainer{
-		indexer: NewIndexer(),
+		indexer: newIndexer(),
 	}
 }
 

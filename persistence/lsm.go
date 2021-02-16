@@ -221,7 +221,7 @@ func (l *Lsm) saveL1Table(buf []byte) {
 }
 
 func (l *Lsm) runCompaction(closer *y.Closer) {
-	compactTicker := time.NewTicker(time.Second * 30)
+	compactTicker := time.NewTicker(time.Second * 1)
 loop:
 	for {
 		select {
@@ -280,7 +280,7 @@ loop:
 }
 
 func (l *Lsm) loadBalancing(closer *y.Closer) {
-	loadBalanceTicker := time.NewTicker(time.Second * 30)
+	loadBalanceTicker := time.NewTicker(time.Second * 1)
 loop:
 	for {
 		select {

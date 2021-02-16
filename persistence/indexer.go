@@ -16,7 +16,7 @@ type node struct {
 	fd          uint32 // file descriptor
 }
 
-func NewIndexer() *indexer {
+func newIndexer() *indexer {
 	return &indexer{}
 }
 

@@ -3,7 +3,7 @@ package persistence
 import "testing"
 
 func TestLowerRange(t *testing.T) {
-	tr := NewIndexer()
+	tr := newIndexer()
 	tr.put(45, 1)
 	tr.put(43, 12)
 	tr.put(20, 2)
@@ -33,7 +33,7 @@ func TestLowerRange(t *testing.T) {
 }
 
 func TestDeleteTable(t *testing.T) {
-	tr := NewIndexer()
+	tr := newIndexer()
 	tr.put(34, 1)
 	tr.put(32, 5)
 	tr.put(31, 4)
