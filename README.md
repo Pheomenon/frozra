@@ -13,6 +13,17 @@
 - [x] Automatic node rebalancing, whether cluster stable or not, the number of elements stored in each node is approximately the same
 - [ ] use built-in event-driven mechanisms: `epoll`
 
+# :zap: Performance
+```
+# Hardware Environment
+CPU: 8 Virtual CPUs
+Mem: 32GiB RAM
+OS : Ubuntu-20.04.1 5.8.0-43-generic #49-Ubuntu
+Go : go1.15.x linux/amd64
+```
+![get](https://raw.githubusercontent.com/Pheomenon/frozra/master/readme_source/get.png)
+![set](https://raw.githubusercontent.com/Pheomenon/frozra/master/readme_source/set.png)
+
 # :space_invader: License
 
 Source code in `frozra` is available under the [MIT License](/LICENSE).
