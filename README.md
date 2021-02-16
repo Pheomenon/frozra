@@ -32,4 +32,3 @@ This benchmark script is in `benchmark` directory
 # :space_invader: License
 
 Source code in `frozra` is available under the [MIT License](/LICENSE).
-
