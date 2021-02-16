@@ -1,0 +1,13 @@
+language: go
+go: 
+  - "1.15.6"
+script:
+  - go test -v ./...
+os: linux
+branches:
+  only:
+    - master
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
