@@ -38,8 +38,8 @@ func produceEntry(m *inMemoryCache, start, end int) {
 
 func TestInMemoryCache_Get(t *testing.T) {
 	m := newInMemoryCache(30)
-	produceEntry(m, 0, 1<<16)
-	for i := 0; i <= 1<<16; i++ {
+	produceEntry(m, 0, 1<<8)
+	for i := 0; i <= 1<<8; i++ {
 		val, _ := m.Get(fmt.Sprintf("key %s", strconv.Itoa(i)))
 		if !bytes.Equal([]byte(fmt.Sprintf("%d", i)), val) {
 			t.Fatalf("got unexpect value: %s", val)
@@ -51,11 +51,11 @@ func TestInMemoryCache_Concurrent(t *testing.T) {
 	clean()
 	var wg sync.WaitGroup
 	m := newInMemoryCache(30)
-	produceEntry(m, 0, 1<<22)
+	produceEntry(m, 0, 1<<8)
 	wg.Add(32)
 	for i := 0; i < 32; i++ {
 		go func() {
-			for j := 0; j <= 1<<22; j++ {
+			for j := 0; j <= 1<<8; j++ {
 				val, _ := m.Get(fmt.Sprintf("key %s", strconv.Itoa(j)))
 				if !bytes.Equal([]byte(fmt.Sprintf("%d", j)), val) {
 					t.Fatalf("got unexpect value: %s", val)

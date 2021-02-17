@@ -221,11 +221,11 @@ func TestDuplicateKeyInL1(t *testing.T) {
 	clean()
 	l := initLSM(t)
 	key := []byte("froza")
-	for i := 0; i <= 1<<16; i++ {
+	for i := 0; i <= 1<<8; i++ {
 		l.Set(key, []byte(fmt.Sprintf("%b", i)))
 	}
 	val, _ := l.Get([]byte("froza"))
-	if !bytes.Equal(val, []byte(fmt.Sprintf("%b", 1<<16))) {
+	if !bytes.Equal(val, []byte(fmt.Sprintf("%b", 1<<8))) {
 		t.Fatalf("Lsm get a unexpected value %s", val)
 	}
 }
