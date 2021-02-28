@@ -22,7 +22,7 @@ func (m *metadata) l1Status(victim tableMetadata) compactionStrategy {
 	}
 
 	for _, l1File := range m.L1Files {
-		// If there is a union, will merge both direct
+		// If there is a union, will merge both directly
 		if (l1File.MinRange <= victim.MinRange && l1File.MaxRange >= victim.MaxRange) || (l1File.MinRange >= victim.MinRange && l1File.MaxRange <= victim.MaxRange) {
 			cs.strategy = UNION
 			cs.tableIDs = append(cs.tableIDs, l1File.Index)

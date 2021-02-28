@@ -3,6 +3,7 @@ package cache
 import (
 	"github.com/sirupsen/logrus"
 	"sync"
+	"sync/atomic"
 	"time"
 	"xonlab.com/frozra/v1/conf"
 	"xonlab.com/frozra/v1/persistence"
@@ -11,20 +12,16 @@ import (
 type inMemoryCache struct {
 	c map[string]value
 	Stat
-	isFull bool
-	ttl    time.Duration
-	lsm    *persistence.Lsm
-	mutex  sync.RWMutex
+	//isFull bool
+	ttl   time.Duration
+	lsm   *persistence.Lsm
+	mutex sync.RWMutex
 }
 
 type value struct {
-	v       []byte
-	created time.Time // the time of the last call to set
-}
-
-type pair struct {
-	k string
-	v []byte
+	v         []byte
+	created   time.Time // the time of the last call to set
+	frequency uint64
 }
 
 func newInMemoryCache(ttl int) *inMemoryCache {
@@ -43,35 +40,46 @@ func newInMemoryCache(ttl int) *inMemoryCache {
 	if ttl > 0 {
 		go c.expirer()
 	}
-	go monit(configure.MemoryThreshold, configure.Interval, c)
+	go c.monit(configure.MemoryThreshold, configure.Interval, c)
 	return c
 }
 
 func (c *inMemoryCache) Set(k string, v []byte) error {
-	if !c.isFull {
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
-		c.c[k] = value{
-			v:       v,
-			created: time.Now(),
-		}
-		c.add(k, v)
+	//if !c.isFull {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	var frequency uint64
+	if key, ok := c.c[k]; !ok {
+		frequency = 1
 	} else {
-		c.lsm.Set([]byte(k), v)
+		frequency = atomic.AddUint64(&key.frequency, 1)
 	}
+	c.c[k] = value{
+		v:         v,
+		created:   time.Now(),
+		frequency: frequency,
+	}
+
+	c.add(k, v)
+	//} else {
+	//	c.lsm.Set([]byte(k), v)
+	//}
 	return nil
 }
 
 func (c *inMemoryCache) Get(k string) ([]byte, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	if c.c[k].v == nil {
+	if key, ok := c.c[k]; ok {
+		atomic.AddUint64(&key.frequency, 1)
+		return c.c[k].v, nil
+	} else {
 		res, exist := c.lsm.Get([]byte(k))
 		if exist {
 			return res, nil
 		}
 	}
-	return c.c[k].v, nil
+	return nil, nil
 }
 
 func (c *inMemoryCache) Del(k string) error {
@@ -87,6 +95,17 @@ func (c *inMemoryCache) Del(k string) error {
 
 func (c *inMemoryCache) GetStat() Stat {
 	return c.Stat
+}
+
+type pair struct {
+	k string
+	v []byte
+}
+
+type inMemoryScanner struct {
+	pair
+	pairCh  chan *pair
+	closeCh chan struct{}
 }
 
 func (c *inMemoryCache) NewScanner() Scanner {
@@ -133,7 +152,7 @@ type monitor struct {
 	cache           *inMemoryCache
 }
 
-func monit(memoryThreshold, interval int, cache *inMemoryCache) {
+func (c *inMemoryCache) monit(memoryThreshold, interval int, cache *inMemoryCache) {
 	m := &monitor{
 		memoryThreshold: memoryThreshold,
 		cache:           cache,
@@ -143,18 +162,42 @@ func monit(memoryThreshold, interval int, cache *inMemoryCache) {
 		select {
 		case <-monitorTicker.C:
 			if (cache.Stat.KeySize+cache.Stat.ValueSize)*8>>30 > int64(m.memoryThreshold) {
-				cache.isFull = true
-			} else {
-				cache.isFull = false
+				go c.switcher()
 			}
+			//else {
+			//cache.isFull = false
+			//}
 		}
 	}
 }
 
-type inMemoryScanner struct {
-	pair
-	pairCh  chan *pair
-	closeCh chan struct{}
+func (c *inMemoryCache) switcher() {
+	total := int(c.Stat.Count / 10)
+	var avg uint64
+	var sum, counter uint64
+	counter = 1000
+	for _, val := range c.c {
+		if counter > 0 {
+			sum += val.frequency
+			counter--
+		} else {
+			break
+		}
+	}
+	avg = sum / counter
+
+	i := 0
+	for key, val := range c.c {
+		if i < total {
+			if val.frequency < avg {
+				c.lsm.Set([]byte(key), val.v)
+				c.Del(key)
+				i++
+			}
+		} else {
+			break
+		}
+	}
 }
 
 func (s *inMemoryScanner) Close() {
