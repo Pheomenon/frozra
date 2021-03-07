@@ -9,9 +9,17 @@ import (
 	"xonlab.com/frozra/v1/persistence/util"
 )
 
+type fdKey struct {
+	level uint8
+	fd    uint32
+	key   []byte
+}
+
 type tableHolder struct {
 	table  []*table
-	keys   chan []byte
+	fdKey  chan fdKey
+	l0     chan []byte
+	l1     chan []byte
 	reader *tableReader
 	sync.RWMutex
 }
@@ -19,54 +27,58 @@ type tableHolder struct {
 func newTableHolder(path string) *tableHolder {
 	holder := &tableHolder{
 		table:  nil,
-		keys:   make(chan []byte, 1024),
+		fdKey:  make(chan fdKey, 4096),
+		l0:     make(chan []byte), //todo: have buffer or not??
+		l1:     make(chan []byte),
 		reader: newTableReader(path),
 	}
+	go holder.search()
 	go holder.eliminate()
 	return holder
 }
 
-func (h *tableHolder) search(fd uint32) ([]byte, bool) {
+func (h *tableHolder) search() {
 	for {
 		select {
-		case key := <-h.keys:
-			hash := util.Hashing(key)
-			tableFullName := util.TablePath(h.reader.path, fd)
+		case fk := <-h.fdKey:
+			hash := util.Hashing(fk.key)
+			tableFullName := h.reader.tablePath(h.reader.path, fk.fd)
+			var t *table
 			for _, item := range h.table {
 				if item.path == tableFullName {
-					return searchKey(item, hash)
+					t = item
+					h.sendValue(item, hash, fk)
+					break
 				}
 			}
-			t := readTable(h.reader.path, fd)
-			val, exist := searchKey(t, hash)
-			if exist {
+			if t == nil {
+				t = h.reader.readTable(h.reader.path, fk.fd)
 				h.table = append(h.table, t)
-				return val, exist
+				h.sendValue(t, hash, fk)
 			}
-			return nil, false
+			//if exist {
+			//	h.table = append(h.table, t)
+			//	return val, exist
+			//}
 		}
 	}
 }
 
-func (h *tableHolder) eliminate() {
-	ticker := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			if len(h.table) > 3 {
-				h.Lock()
-				h.release()
-				h.RUnlock()
-			}
+func (h *tableHolder) sendValue(item *table, hash uint32, fk fdKey) {
+	val, exist := searchKey(item, hash)
+	if exist {
+		if fk.level == 0 {
+			h.l0 <- val
+		} else {
+			h.l1 <- val
+		}
+	} else {
+		if fk.level == 0 {
+			h.l0 <- nil
+		} else {
+			h.l1 <- nil
 		}
 	}
-}
-
-func (h *tableHolder) release() {
-	if syscall.Munmap(h.table[0].dataRef) != nil {
-		logrus.Warnf("failed to munmap")
-	}
-	h.table = h.table[1:]
 }
 
 func searchKey(t *table, hash uint32) ([]byte, bool) {
@@ -80,4 +92,38 @@ func searchKey(t *table, hash uint32) ([]byte, bool) {
 	position += 4
 	position += keyLength
 	return t.data[position : position+valLength], true
+}
+
+func (h *tableHolder) eliminate() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			if len(h.table) > 3 {
+				h.Lock()
+				h.release()
+				h.Unlock()
+			}
+		}
+	}
+}
+
+func (h *tableHolder) remove(fd uint32) {
+	for i := 0; i < len(h.table); i++ {
+		if h.table[i].index == fd {
+			h.Lock()
+			if syscall.Munmap(h.table[i].dataRef) != nil {
+				logrus.Warnf("failed to munmap")
+			}
+			h.table = append(h.table[:i], h.table[i+1:]...)
+			h.Unlock()
+		}
+	}
+}
+
+func (h *tableHolder) release() {
+	if syscall.Munmap(h.table[0].dataRef) != nil {
+		logrus.Warnf("failed to munmap")
+	}
+	h.table = h.table[1:]
 }

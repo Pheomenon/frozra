@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -43,32 +42,35 @@ func (lm1 *level1Maintainer) delTable(index uint32) {
 }
 
 // get check indexer and return corresponding value if it existed
-func (lm1 *level1Maintainer) get(key []byte) ([]byte, bool) {
+func (lm1 *level1Maintainer) get(key []byte, holder *tableHolder) ([]byte, bool) {
 	lm1.RLock()
 	defer lm1.RUnlock()
 	hash := util.Hashing(key)
 	target := lm1.indexer.floor(hash)
 	if target != nil {
-		table := readTable("./", target.fd)
-		//defer table.release()
-		return lm1.searchKey(table, hash)
+		holder.fdKey <- fdKey{fd: target.fd, key: key}
+		result := <-holder.l1
+		if result != nil {
+			return result, false
+		}
+		return nil, false
 	} else {
 		return nil, false
 	}
 }
 
-func (lm1 *level1Maintainer) searchKey(t *table, hash uint32) ([]byte, bool) {
-	position, ok := t.offsetMap[hash]
-	if !ok {
-		return nil, false
-	}
-	keyLength := binary.BigEndian.Uint32(t.data[position : position+4])
-	position += 4
-	valLength := binary.BigEndian.Uint32(t.data[position : position+4])
-	position += 4
-	position += keyLength
-	return t.data[position : position+valLength], true
-}
+//func (lm1 *level1Maintainer) searchKey(t *table, hash uint32) ([]byte, bool) {
+//	position, ok := t.offsetMap[hash]
+//	if !ok {
+//		return nil, false
+//	}
+//	keyLength := binary.BigEndian.Uint32(t.data[position : position+4])
+//	position += 4
+//	valLength := binary.BigEndian.Uint32(t.data[position : position+4])
+//	position += 4
+//	position += keyLength
+//	return t.data[position : position+valLength], true
+//}
 
 func (lm1 *level1Maintainer) persistence(t *table, path string) {
 	filePath, err := filepath.Abs(path)

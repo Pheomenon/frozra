@@ -28,6 +28,7 @@ type Lsm struct {
 	memoryTable       *hashMap
 	swap              *hashMap
 	flushDisk         chan *hashMap
+	tableHolder       *tableHolder
 	writeCloser       *y.Closer
 	loadBalanceCloser *y.Closer
 	compactCloser     *y.Closer
@@ -41,7 +42,7 @@ func New(setting conf.Persistence) (*Lsm, error) {
 		return nil, err
 	}
 
-	metadata, err := loadMetadata(absPath)
+	md, err := loadMetadata(absPath)
 	if err != nil {
 		return nil, err
 	}
@@ -49,20 +50,23 @@ func New(setting conf.Persistence) (*Lsm, error) {
 	l0Maintainer, err := loadFilter(absPath)
 
 	l1Maintainer := newLevel1Maintainer()
-	for _, l1File := range metadata.L1Files {
+	for _, l1File := range md.L1Files {
 		t := readTable(absPath, l1File.Index)
 		l1Maintainer.addTable(t)
 		t.release()
 	}
 
+	th := newTableHolder(absPath)
+
 	lsm := &Lsm{
 		setting:           setting,
 		writeChan:         make(chan *request, 1024),
 		absPath:           absPath,
-		metadata:          metadata,
+		metadata:          md,
 		memoryTable:       newHashMap(setting.MemoryTableSize),
 		l0Maintainer:      l0Maintainer,
 		l1Maintainer:      l1Maintainer,
+		tableHolder:       th,
 		writeCloser:       y.NewCloser(1),
 		loadBalanceCloser: y.NewCloser(1),
 		compactCloser:     y.NewCloser(1),
@@ -145,11 +149,11 @@ func (l *Lsm) Get(key []byte) ([]byte, bool) {
 		}
 	}
 
-	val, exist = l.l0Maintainer.get(key, l.absPath)
+	val, exist = l.l0Maintainer.get(key, l.tableHolder)
 	if exist {
 		return val, exist
 	}
-	return l.l1Maintainer.get(key)
+	return l.l1Maintainer.get(key, l.tableHolder)
 }
 
 // Close save all data and metadata form memory to disk
@@ -238,6 +242,9 @@ loop:
 					t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
 					t0 := l.l0Maintainer.compress(t1, t2, l.metadata.nextFileID())
 
+					l.tableHolder.remove(l.metadata.L0Files[0].Index)
+					l.tableHolder.remove(l.metadata.L0Files[1].Index)
+
 					l.l0Maintainer.delTable(l.metadata.L0Files[0].Index)
 					l.l0Maintainer.delTable(l.metadata.L0Files[1].Index)
 
@@ -247,6 +254,7 @@ loop:
 					l.metadata.delL0File(l.metadata.L0Files[0].Index)
 					l.metadata.delL0File(l.metadata.L0Files[1].Index)
 
+					t0.path = util.TablePath(l.absPath, t0.index)
 					l.l1Maintainer.persistence(t0, l.absPath)
 					l.l1Maintainer.addTable(t0)
 

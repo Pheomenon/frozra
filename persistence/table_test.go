@@ -14,7 +14,7 @@ package persistence
 //		t.Fatal("key not found in the hashmap")
 //	}
 //	if bytes.Compare([]byte(fmt.Sprintf("Xonlab%d", 65534)), v) != 0 {
-//		t.Fatalf("expected value %s but got value %s", "nanbare65534", string(v))
+//		t.Fatalf("expected value %s but got value %s", "Xonlab65534", string(v))
 //	}
 //	os.Remove("./1.fza")
 //}

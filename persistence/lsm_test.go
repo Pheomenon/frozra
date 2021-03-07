@@ -284,13 +284,14 @@ func TestLsm_GetInL1(t *testing.T) {
 //func TestLsm_Mixed(t *testing.T) {
 //	clean()
 //	l := initLSM(t)
-//	produceEntry(l, 0, 1<<24)
+//	produceEntry(l, 0, 1<<16)
 //	l.Close()
 //	l = initLSM(t)
-//	for i := 0; i <= 1<<24; i++ {
+//	for i := 0; i <= 1<<16; i++ {
 //		val, _ := l.Get([]byte(fmt.Sprintf("key %d", i)))
+//		logrus.Infof("got val %s",val)
 //		if !bytes.Equal(val, []byte(fmt.Sprintf("%d", i))) {
-//			t.Fatalf("Lsm get a unexpected value %s", val)
+//			t.Fatalf("except got %d, but got %s", i, val)
 //		}
 //	}
 //}

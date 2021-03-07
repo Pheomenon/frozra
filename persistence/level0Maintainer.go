@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"sync"
-	"xonlab.com/frozra/v1/persistence/util"
 )
 
 type level0Maintainer struct {
@@ -43,7 +42,7 @@ func (lm0 *level0Maintainer) addTable(h *hashMap, fd uint32) {
 	lm0.filter[fd] = filter
 }
 
-func (lm0 *level0Maintainer) get(key []byte, absPath string) ([]byte, bool) {
+func (lm0 *level0Maintainer) get(key []byte, holder *tableHolder) ([]byte, bool) {
 	var value []byte
 	c := crc32.New(CrcTable)
 	_, _ = c.Write(key)
@@ -53,7 +52,7 @@ func (lm0 *level0Maintainer) get(key []byte, absPath string) ([]byte, bool) {
 	for fd, bloom := range lm0.filter {
 		isIn := bloom.Has(hash)
 		if isIn {
-			value = lm0.search(key, fd, absPath)
+			value = lm0.search(key, fd, holder)
 		}
 		if value == nil {
 			continue
@@ -64,19 +63,25 @@ func (lm0 *level0Maintainer) get(key []byte, absPath string) ([]byte, bool) {
 	return nil, false
 }
 
-func (lm0 *level0Maintainer) search(key []byte, fd uint32, absPath string) []byte {
-	t0 := readTable(absPath, fd)
-	// TODO: this table's fd should be close but when it close return value will be unreferenced.
-	//defer t0.release()
-	hash := util.Hashing(key)
-	if position, ok := t0.offsetMap[hash]; ok {
-		keyLength := binary.BigEndian.Uint32(t0.data[position : position+4])
-		position += 4
-		valLength := binary.BigEndian.Uint32(t0.data[position : position+4])
-		position += 4
-		return t0.data[position+keyLength : position+keyLength+valLength]
+func (lm0 *level0Maintainer) search(key []byte, fd uint32, holder *tableHolder) []byte {
+	holder.fdKey <- fdKey{fd: fd, key: key}
+	result := <-holder.l0
+	if result != nil {
+		return result
 	}
 	return nil
+
+	//t0 := readTable(absPath, fd)
+	// TODO: this table's fd should be close but when it close return value will be unreferenced.
+	//defer t0.release()
+	//hash := util.Hashing(key)
+	//if position, ok := t0.offsetMap[hash]; ok {
+	//	keyLength := binary.BigEndian.Uint32(t0.data[position : position+4])
+	//	position += 4
+	//	valLength := binary.BigEndian.Uint32(t0.data[position : position+4])
+	//	position += 4
+	//	return t0.data[position+keyLength : position+keyLength+valLength]
+	//}
 }
 
 // save every l0 table's filter to disk

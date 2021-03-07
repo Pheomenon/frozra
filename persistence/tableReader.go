@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"syscall"
-	"xonlab.com/frozra/v1/persistence/util"
 )
 
 type tableReader struct {
@@ -20,8 +19,8 @@ func newTableReader(path string) *tableReader {
 }
 
 // readTable return table's content
-func (r *tableReader) readTable(path string, index uint32) *table {
-	path = util.TablePath(path, index)
+func (r *tableReader) readTable(path string, fd uint32) *table {
+	path = r.tablePath(path, fd)
 	fp, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	if err != nil {
 		panic(fmt.Sprintf("unable to open table file, error: %v", err))
@@ -47,6 +46,7 @@ func (r *tableReader) readTable(path string, index uint32) *table {
 	if err != nil {
 		panic(fmt.Sprintf("unable to decode map, error: %v", err))
 	}
+
 	return &table{
 		data:      dataRef[0:fi.metaOffset], // this field stored table's content
 		path:      path,
@@ -56,6 +56,10 @@ func (r *tableReader) readTable(path string, index uint32) *table {
 		fp:        fp,
 		status:    status,
 		offsetMap: offsetMap,
-		index:     index,
+		index:     fd,
 	}
+}
+
+func (r *tableReader) tablePath(abs string, fd uint32) string {
+	return fmt.Sprintf("%s/%d.fza", abs, fd)
 }
