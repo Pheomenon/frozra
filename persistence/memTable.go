@@ -152,9 +152,9 @@ func (h *hashMap) persistence(path string, index uint32) {
 	var content bytes.Buffer
 	content.Grow(len(h.buf))
 	// this var use to store the real entry position(origin position - duplicate key caused offset)
-	var tablePosition uint32
+	var entryPosition uint32
 	for hash, position := range h.concurrentMap {
-		tablePosition = uint32(content.Len())
+		entryPosition = uint32(content.Len())
 		// key length
 		content.Write(h.buf[position : position+4])
 		// value length
@@ -165,7 +165,7 @@ func (h *hashMap) persistence(path string, index uint32) {
 		// value content
 		valLength := binary.BigEndian.Uint32(h.buf[position+4 : position+8])
 		content.Write(h.buf[position+8+keyLength : position+8+keyLength+valLength])
-		h.concurrentMap[hash] = tablePosition
+		h.concurrentMap[hash] = entryPosition
 	}
 
 	_, err = fp.Write(content.Bytes())

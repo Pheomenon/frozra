@@ -239,6 +239,7 @@ loop:
 				if l.metadata.l1Len() == 0 {
 					l.metadata.sortL0()
 					//l.metadata.mutex.Lock()
+					l.tableHolder.Lock()
 					t1, t2 := readTable(l.absPath, l.metadata.L0Files[0].Index), readTable(l.absPath, l.metadata.L0Files[1].Index)
 					t0 := l.l0Maintainer.compress(t1, t2, l.metadata.nextFileID())
 
@@ -259,6 +260,7 @@ loop:
 					l.l1Maintainer.addTable(t0)
 
 					l.metadata.addL1File(uint32(t0.fileInfo.entries), t0.fileInfo.minRange, t0.fileInfo.maxRange, int(t0.size), t0.index)
+					l.tableHolder.Unlock()
 					//l.metadata.mutex.Unlock()
 				} else {
 					// level 1 files already exist so find union set to push
