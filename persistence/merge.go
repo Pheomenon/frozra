@@ -5,9 +5,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 // tableMerger used to merge two table into memory buffer

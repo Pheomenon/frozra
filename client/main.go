@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"xonlab.com/frozra/v1/benchmark/cacheClient"
+
+	"github.com/Pheomenon/frozra/v1/benchmark/cacheClient"
 )
 
 func main() {

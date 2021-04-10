@@ -3,11 +3,13 @@ package persistence
 import (
 	"bytes"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 	"sync"
 	"testing"
-	"xonlab.com/frozra/v1/conf"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/Pheomenon/frozra/v1/conf"
 )
 
 func TestLSM(t *testing.T) {

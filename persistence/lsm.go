@@ -1,15 +1,17 @@
 package persistence
 
 import (
-	"github.com/dgraph-io/badger/y"
-	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
-	"xonlab.com/frozra/v1/conf"
-	"xonlab.com/frozra/v1/persistence/util"
+
+	"github.com/dgraph-io/badger/y"
+	"github.com/sirupsen/logrus"
+
+	"github.com/Pheomenon/frozra/v1/conf"
+	"github.com/Pheomenon/frozra/v1/persistence/util"
 )
 
 type request struct {

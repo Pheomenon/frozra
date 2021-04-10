@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"log"
-	"xonlab.com/frozra/v1/cache"
-	"xonlab.com/frozra/v1/cluster"
-	"xonlab.com/frozra/v1/http"
-	"xonlab.com/frozra/v1/tcp"
+
+	"github.com/Pheomenon/frozra/v1/cache"
+	"github.com/Pheomenon/frozra/v1/cluster"
+	"github.com/Pheomenon/frozra/v1/http"
+	"github.com/Pheomenon/frozra/v1/tcp"
 )
 
 func main() {

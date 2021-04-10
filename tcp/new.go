@@ -2,8 +2,9 @@ package tcp
 
 import (
 	"net"
-	"xonlab.com/frozra/v1/cache"
-	"xonlab.com/frozra/v1/cluster"
+
+	"github.com/Pheomenon/frozra/v1/cache"
+	"github.com/Pheomenon/frozra/v1/cluster"
 )
 
 type Server struct {

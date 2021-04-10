@@ -6,9 +6,10 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
 )
 
 type tableReader struct {

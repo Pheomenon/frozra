@@ -2,9 +2,10 @@ package conf
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
+
+	"gopkg.in/yaml.v2"
 )
 
 func TestConf(t *testing.T) {
