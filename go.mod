@@ -1,4 +1,4 @@
-module xonlab.com/frozra/v1
+module github.com/Pheomenon/frozra/v1
 
 go 1.15
 

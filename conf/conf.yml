@@ -7,7 +7,7 @@
 # it in some specific form. Every specific form will be explained in
 # the corresponding comment.
 
-# inmemory used to config memory size that can be used by memory component
+# inmemory used to conf memory size that can be used by memory component
 # memoryThreshold set the maximum memory size that can be used. unit: GB
 # interval sets the frequency of check memory component used memory exceed threshold
 # or not. If exceeded threshold frozra will start to use range LSM engine to store
@@ -17,7 +17,7 @@ inmemory:
   memoryThreshold: 1
   interval: 1
 
-# persistence used to config LSM engine's parameters.
+# persistence used to conf LSM engine's parameters.
 # l0Capacity sets how many tables can be stored in the l0 layer.
 # memoryTableSize sets the memory component size of LSM engine. unit: MB
 # l1TableSize sets the maximum table size of leve1 layer. unit: MB

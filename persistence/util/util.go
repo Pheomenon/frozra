@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 var CrcTable = crc32.MakeTable(crc32.Castagnoli)

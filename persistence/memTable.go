@@ -5,12 +5,13 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+
+	"github.com/sirupsen/logrus"
 )
 
 var CrcTable = crc32.MakeTable(crc32.Castagnoli)

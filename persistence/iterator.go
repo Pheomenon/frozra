@@ -2,9 +2,10 @@ package persistence
 
 import (
 	"encoding/binary"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 type iterator struct {

@@ -1,11 +1,12 @@
 package cache
 
 import (
-	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
-	"xonlab.com/frozra/v1/conf"
-	"xonlab.com/frozra/v1/persistence"
+
+	"github.com/Pheomenon/frozra/v1/conf"
+	"github.com/Pheomenon/frozra/v1/persistence"
+	"github.com/sirupsen/logrus"
 )
 
 type inMemoryCache struct {
