@@ -63,5 +63,5 @@ func TestSaveFile(t *testing.T) {
 	if _, err := os.Stat(fmt.Sprintf("%s/%d.fza", filePath, 1)); os.IsNotExist(err) {
 		panic("file not exist")
 	}
-	os.Remove(fmt.Sprintf("%s/%d.fza", filePath, 1))
+	//os.Remove(fmt.Sprintf("%s/%d.fza", filePath, 1))
 }

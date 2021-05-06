@@ -8,6 +8,7 @@ import (
 	"hash/crc32"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -141,11 +142,16 @@ func (h *hashMap) persistence(path string, index uint32) {
 	if err != nil {
 		panic("unable to flushing memory table to disk")
 	}
-	fp, err := os.Create(fmt.Sprintf("%s/%d.fza", filePath, index))
+	idxFp, err := os.Create(fmt.Sprintf("%s/%d.idx", filePath, index))
 	if err != nil {
 		panic(fmt.Sprintf("unable to flush memory table, error: %v", err))
 	}
-	defer fp.Close()
+	dataFp, err := os.Create(fmt.Sprintf("%s/%d.fza", filePath, index))
+	if err != nil {
+		panic(fmt.Sprintf("unable to flush memory table, error: %v", err))
+	}
+	//defer idxFp.Close()
+	//defer dataFp.Close()
 
 	// traverse every key-value pair and copy its content.
 	// because memory table just append entry's content and change entry's value
@@ -169,10 +175,8 @@ func (h *hashMap) persistence(path string, index uint32) {
 		h.concurrentMap[hash] = tablePosition
 	}
 
-	_, err = fp.Write(content.Bytes())
-	if err != nil {
-		logrus.Fatalf("persistence: can't save data to disk: %v", err)
-	}
+	go writeToDisk(dataFp, content.Bytes())
+
 	slots := h.Len()
 	fib := make([]byte, 32)
 	fi := &fileInfo{
@@ -190,8 +194,19 @@ func (h *hashMap) persistence(path string, index uint32) {
 	if err != nil {
 		panic("unable to encode concurrent map")
 	}
-	fp.Write(metaBuf.Bytes())
-	fp.Write(fib)
+	n, err := idxFp.Write(metaBuf.Bytes())
+	if err != nil {
+		logrus.Fatalf("persistence: can't save data to disk: %v", err)
+	} else if n != len(metaBuf.Bytes()) {
+		logrus.Fatalf("persistence: not save idx to disk compeletly! saved %d byte, expect %d byte", n, metaBuf.Len())
+	}
+	n, err = idxFp.Write(fib)
+	if err != nil {
+		logrus.Fatalf("persistence: can't save data to disk: %v", err)
+	} else if n != len(fib) {
+		logrus.Fatalf("persistence: not save idx to disk compeletly! saved %d byte, expect %d byte", n, len(fib))
+	}
+	idxFp.Close()
 }
 
 func (h *hashMap) Len() int {
@@ -218,4 +233,19 @@ func (fi *fileInfo) Encode(buf []byte) {
 	binary.BigEndian.PutUint32(buf[4:8], uint32(fi.entries))
 	binary.BigEndian.PutUint32(buf[8:16], fi.minRange)
 	binary.BigEndian.PutUint32(buf[16:24], fi.maxRange)
+}
+
+func writeToDisk(fp *os.File, content []byte) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	n, err := fp.Write(content)
+	if err != nil {
+		logrus.Fatalf("persistence: can't save data to disk: %v", err)
+	} else if n != len(content) {
+		logrus.Fatalf("persistence: not save data to disk compeletly! saved %d byte, expect %d byte", n, len(content))
+	}
+	err = fp.Close()
+	if err != nil {
+		logrus.Fatalf("persistence: close file point error when save data to disk, error: %v", err)
+	}
 }

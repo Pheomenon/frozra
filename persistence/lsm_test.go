@@ -6,7 +6,8 @@ import (
 	"os"
 	"sync"
 	"testing"
-	"xonlab.com/frozra/v1/conf"
+
+	"github.com/Pheomenon/frozra/v1/conf"
 )
 
 func TestLSM(t *testing.T) {

@@ -13,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var dataPath = "./"
+
 type request struct {
 	key   []byte
 	value []byte

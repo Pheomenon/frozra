@@ -1,10 +1,11 @@
 package cluster
 
 import (
-	"github.com/hashicorp/memberlist"
 	"io/ioutil"
-	"stathat.com/c/consistent"
 	"time"
+
+	"github.com/hashicorp/memberlist"
+	"stathat.com/c/consistent"
 )
 
 type Node interface {
